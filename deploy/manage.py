@@ -164,7 +164,7 @@ def main():
             shutil.rmtree(preview_root)
             print(f'Removed preview {args.pr} and its disposable database.')
             return
-        subprocess.run(['docker', 'network', 'inspect', config.get('EDGE_NETWORK', 'bayne-edge')],
+        subprocess.run(['docker', 'network', 'inspect', config.get('EDGE_NETWORK', 'almis-edge')],
                        stdout=subprocess.DEVNULL, env=environment, check=True)
         subprocess.run(compose + ['up', '-d', '--wait', '--wait-timeout', '240'],
                        env=environment, check=True)

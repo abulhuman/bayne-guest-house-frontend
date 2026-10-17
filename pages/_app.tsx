@@ -1,11 +1,21 @@
 import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
-import { JetBrains_Mono, Schibsted_Grotesk } from 'next/font/google';
+import localFont from 'next/font/local';
 import { AuthProvider } from '@/context/AuthContext';
 import { ToastProvider } from '@/components/Toast';
 
-const sans = Schibsted_Grotesk({ subsets: ['latin'], variable: '--font-schibsted' });
-const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' });
+const sans = localFont({
+  src: '../public/fonts/schibsted-grotesk-latin.woff2',
+  weight: '400 900',
+  variable: '--font-schibsted',
+  display: 'swap',
+});
+const mono = localFont({
+  src: '../public/fonts/jetbrains-mono-latin.woff2',
+  weight: '100 800',
+  variable: '--font-jetbrains',
+  display: 'swap',
+});
 
 export default function App({ Component, pageProps }: AppProps) {
   return (

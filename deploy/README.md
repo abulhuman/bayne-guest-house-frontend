@@ -6,7 +6,7 @@ The temporary deployment repository is https://github.com/abulhuman/bayne-guest-
 
 ## Existing host infrastructure
 
-The backend deployment owns the `bayne-main` stack, the `bayne-edge` Docker network, Traefik, and the `bayne-onprem` Cloudflare Tunnel. This repository joins that network. It does not create another connector or store another tunnel token. Keep the backend stack running.
+The backend deployment owns the `almis-main` stack, the `almis-edge` Docker network, Traefik, and the `almis-onprem` Cloudflare Tunnel. This repository joins that network. It does not create another connector or store another tunnel token. Keep the backend stack running.
 
 Cloudflare hosts DNS for the Namecheap-registered domain. The existing remotely managed tunnel routes `api.almishotel.com` and `*.almishotel.com` to `http://edge:80`, followed by an HTTP 404 catch-all. The frontend manager creates a proxied CNAME for each published frontend hostname. It refuses to change records without its ownership comment. It does not create a wildcard DNS record or touch the public hotel's root or `www` records.
 

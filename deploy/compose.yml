@@ -11,7 +11,7 @@ services:
       HOSTNAME: 0.0.0.0
     labels:
       traefik.enable: "true"
-      traefik.docker.network: ${EDGE_NETWORK:-bayne-edge}
+      traefik.docker.network: ${EDGE_NETWORK:-almis-edge}
       traefik.http.routers.bayne-frontend.rule: Host(`${APP_DOMAIN:?APP_DOMAIN is required}`)
       traefik.http.routers.bayne-frontend.entrypoints: web
       traefik.http.services.bayne-frontend.loadbalancer.server.port: "3000"
@@ -25,4 +25,4 @@ services:
 networks:
   edge:
     external: true
-    name: ${EDGE_NETWORK:-bayne-edge}
+    name: ${EDGE_NETWORK:-almis-edge}

@@ -11,7 +11,7 @@ services:
     networks: [edge]
     labels:
       - traefik.enable=true
-      - traefik.docker.network=${EDGE_NETWORK:-bayne-edge}
+      - traefik.docker.network=${EDGE_NETWORK:-almis-edge}
       - traefik.http.routers.fe-pr-${PR_NUMBER:?PR_NUMBER is required}.rule=Host(`${PREVIEW_HOST:?PREVIEW_HOST is required}`)
       - traefik.http.routers.fe-pr-${PR_NUMBER}.entrypoints=web
       - traefik.http.services.fe-pr-${PR_NUMBER}.loadbalancer.server.port=3000
@@ -37,7 +37,7 @@ services:
     networks: [edge, database]
     labels:
       - traefik.enable=true
-      - traefik.docker.network=${EDGE_NETWORK:-bayne-edge}
+      - traefik.docker.network=${EDGE_NETWORK:-almis-edge}
       - traefik.http.routers.fe-pr-${PR_NUMBER}-api.rule=Host(`${PREVIEW_HOST}`) && (Path(`/api`) || PathPrefix(`/api/`))
       - traefik.http.routers.fe-pr-${PR_NUMBER}-api.entrypoints=web
       - traefik.http.routers.fe-pr-${PR_NUMBER}-api.priority=100
@@ -67,7 +67,7 @@ services:
 networks:
   edge:
     external: true
-    name: ${EDGE_NETWORK:-bayne-edge}
+    name: ${EDGE_NETWORK:-almis-edge}
   database:
     internal: true
 volumes:
