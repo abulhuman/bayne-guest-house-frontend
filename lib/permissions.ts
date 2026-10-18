@@ -24,6 +24,7 @@ export const PAGES: readonly Page[] = [
   { path: '/rooms', label: 'Rooms', roles: ['admin', 'manager', 'reception'] },
   { path: '/staff', label: 'Staff', roles: ['admin', 'manager'] },
   { path: '/guests', label: 'Guests', roles: ['admin', 'manager', 'reception'] },
+  { path: '/help', label: 'Help', roles: ROLES },
 ];
 
 // Mirrors the backend's @Roles on POST and DELETE /inventory.
