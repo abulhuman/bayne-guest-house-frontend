@@ -128,8 +128,6 @@ A `caption` step holds its text for a short reading interval and clears it when 
 
 The event log records the viewport, device scale, frame count, duration and timestamped events. Each step has `t`, `type`, `box` and `caption`, with the verb and header text where relevant. `dialog` events hold the whole visible dialog box or `null` on close; `glide` events hold their action target and destination. Use these events with the retained source for later renderers.
 
-## Cleanup
-
 ## Tutorial metadata and affected demos
 
 ```bash
