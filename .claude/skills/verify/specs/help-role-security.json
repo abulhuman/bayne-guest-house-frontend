@@ -1,0 +1,60 @@
+{
+  "name": "help-role-security",
+  "role": "security",
+  "steps": [
+    {
+      "goto": "/help"
+    },
+    {
+      "expectApi": "GET /tutorials 200"
+    },
+    {
+      "expectText": "Search guides"
+    },
+    {
+      "expectNoText": "No guides are available yet."
+    },
+    {
+      "expectVisible": "h2:text-is(\"Sign in\")"
+    },
+    {
+      "expectVisible": "button:text-is(\"Play tour\")"
+    },
+    {
+      "click": "button:text-is(\"Play tour\")"
+    },
+    {
+      "expectVisible": "[role=\"dialog\"] h3:text-is(\"Security sign-in tour\")"
+    },
+    {
+      "press": "Escape"
+    },
+    {
+      "expectHidden": "[role=\"dialog\"]"
+    },
+    {
+      "expectVisible": "li button:has-text(\"Security sign-in tour\")"
+    },
+    {
+      "expectHidden": "h2:text-is(\"Bookings\")"
+    },
+    {
+      "expectHidden": "h2:text-is(\"Staff\")"
+    },
+    {
+      "expectNoText": "Create a booking"
+    },
+    {
+      "expectHidden": "nav a[href=\"/inventory\"]"
+    },
+    {
+      "expectHidden": "nav a[href=\"/dashboard\"]"
+    },
+    {
+      "expectNoPageErrors": true
+    },
+    {
+      "screenshot": "help-security"
+    }
+  ]
+}

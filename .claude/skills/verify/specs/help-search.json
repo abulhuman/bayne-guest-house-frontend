@@ -1,0 +1,45 @@
+{
+  "name": "help-search",
+  "role": "reception",
+  "steps": [
+    {
+      "goto": "/help"
+    },
+    {
+      "expectApi": "GET /tutorials 200"
+    },
+    {
+      "press": "/"
+    },
+    {
+      "fill": "#help-search",
+      "value": "laundry"
+    },
+    {
+      "expectVisible": "li button:has-text(\"Take a laundry order\")"
+    },
+    {
+      "expectHidden": "li button:has-text(\"Create a booking\")"
+    },
+    {
+      "fill": "#help-search",
+      "value": ""
+    },
+    {
+      "expectVisible": "li button:has-text(\"Create a booking\")"
+    },
+    {
+      "fill": "#help-search",
+      "value": "zzz"
+    },
+    {
+      "expectText": "No guides match your search."
+    },
+    {
+      "expectHidden": "li button:has-text(\"Create a booking\")"
+    },
+    {
+      "expectNoPageErrors": true
+    }
+  ]
+}

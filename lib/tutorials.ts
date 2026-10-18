@@ -1,11 +1,4 @@
-export type Role = 'admin' | 'manager' | 'reception' | 'housekeeping' | 'barista' | 'security' | 'finance' | 'store';
-
-const PAGE_ORDER: Record<Role, string[]> = {
-  admin: ['/dashboard', '/bookings', '/laundry', '/attendance', '/payments', '/inventory', '/rooms', '/staff', '/guests'],
-  manager: ['/dashboard', '/bookings', '/laundry', '/attendance', '/payments', '/inventory', '/rooms', '/staff', '/guests'],
-  reception: ['/dashboard', '/bookings', '/laundry', '/attendance', '/payments', '/inventory', '/rooms', '/guests'],
-  housekeeping: ['/laundry'], barista: ['/inventory'], security: ['/help'], finance: ['/dashboard', '/payments'], store: ['/inventory'],
-};
+import { PAGES, pagesFor, type Role } from './permissions';
 
 export type Tutorial = {
   name: string;
@@ -36,13 +29,23 @@ export function resolveMediaUrl(path: string): string {
   return new URL(target, `${base.origin}${apiPrefix || '/'}`).toString();
 }
 
-export async function fetchTutorials(client: { get: (path: string) => Promise<{ data: { tutorials?: Tutorial[] } }> }): Promise<Tutorial[]> {
+type TutorialsClient = { get: (path: string) => Promise<{ data: Tutorial[] }> };
+
+export async function fetchTutorials(client: TutorialsClient): Promise<Tutorial[]> {
   const response = await client.get('/tutorials');
-  return (response.data.tutorials ?? []).map((tutorial) => ({
+  return response.data.map((tutorial) => ({
     ...tutorial,
     videoUrl: resolveMediaUrl(tutorial.videoUrl),
     posterUrl: resolveMediaUrl(tutorial.posterUrl),
   }));
+}
+
+export async function tutorialForPlayback(client: TutorialsClient, tutorial: Tutorial, nowSec = Date.now() / 1000): Promise<Tutorial> {
+  const expires = new URL(tutorial.videoUrl).searchParams.get('exp');
+  if (expires && Number(expires) > nowSec + 60) return tutorial;
+  const refreshed = (await fetchTutorials(client)).find((row) => row.name === tutorial.name);
+  if (!refreshed) throw new Error('Guide is no longer available');
+  return refreshed;
 }
 
 export function filterTutorials(tutorials: Tutorial[], query: string): Tutorial[] {
@@ -59,14 +62,22 @@ export function newTutorials(tutorials: Tutorial[], lastSeen: string | null): Tu
 }
 
 export function groupTutorials(tutorials: Tutorial[], role: Role): TutorialGroup[] {
-  const pageOrder = new Map(PAGE_ORDER[role].map((page, index) => [page, index]));
+  const orderedPages = [...pagesFor(role), ...PAGES];
   const byGroup = new Map<string, Tutorial[]>();
-  for (const tutorial of tutorials) byGroup.set(tutorial.group, [...(byGroup.get(tutorial.group) ?? []), tutorial]);
-  return [...byGroup.entries()]
-    .map(([name, rows]) => ({ name, tutorials: [...rows].sort((a, b) => a.title.localeCompare(b.title)) }))
-    .sort((a, b) => {
-      const firstPage = (group: TutorialGroup) => Math.min(...group.tutorials.flatMap((tutorial) => tutorial.pages.length ? tutorial.pages.map((page) => pageOrder.get(page) ?? 999) : [-1]));
-      return firstPage(a) - firstPage(b) || a.name.localeCompare(b.name);
-    });
+  for (const tutorial of tutorials) {
+    const name = tutorial.group === 'sign-in' || tutorial.name.endsWith('-tour')
+      ? 'Sign in'
+      : orderedPages.find((page) => tutorial.pages.includes(page.path))?.label ?? 'Getting started';
+    const rows = byGroup.get(name) ?? [];
+    rows.push(tutorial);
+    byGroup.set(name, rows);
+  }
+  const labels = ['Sign in', ...orderedPages.map((page) => page.label), 'Getting started'];
+  return [...byGroup].map(([name, rows]) => ({ name, tutorials: rows.sort((a, b) => a.title.localeCompare(b.title)) }))
+    .sort((a, b) => labels.indexOf(a.name) - labels.indexOf(b.name));
+}
+
+export function tourFor(tutorials: Tutorial[], role: Role): Tutorial | undefined {
+  return tutorials.find((tutorial) => tutorial.primaryRole === role && tutorial.name === `${role}-tour`);
 }
 

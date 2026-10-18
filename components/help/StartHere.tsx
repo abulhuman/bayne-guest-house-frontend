@@ -1,10 +1,10 @@
 import type { Role } from '@/lib/permissions';
-import type { Tutorial } from '@/lib/tutorials';
+import { tourFor, type Tutorial } from '@/lib/tutorials';
 import Panel from '@/components/Panel';
 import Button from '@/components/Button';
 
 export default function StartHere({ role, tutorials, onOpen }: { role: Role; tutorials: Tutorial[]; onOpen: (tutorial: Tutorial) => void }) {
-  const tour = tutorials.find((tutorial) => tutorial.primaryRole === role);
+  const tour = tourFor(tutorials, role);
   const tasks = tutorials.filter((tutorial) => tutorial.primaryRole === role && tutorial !== tour).slice(0, 3);
   return (
     <Panel className="mb-6 border border-accent/20 p-5 md:p-6">

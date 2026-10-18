@@ -1,0 +1,35 @@
+{
+  "name": "help-load-retry",
+  "role": "reception",
+  "failApi": [
+    "GET /tutorials"
+  ],
+  "steps": [
+    {
+      "goto": "/help"
+    },
+    {
+      "expectText": "Couldn't load tutorials"
+    },
+    {
+      "unfailApi": [
+        "GET /tutorials"
+      ]
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Retry"
+      }
+    },
+    {
+      "expectApi": "GET /tutorials 200"
+    },
+    {
+      "expectVisible": "li button:has-text(\"Create a booking\")"
+    },
+    {
+      "expectNoPageErrors": true
+    }
+  ]
+}

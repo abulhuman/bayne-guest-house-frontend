@@ -1,0 +1,45 @@
+{
+  "name": "help-role-reception",
+  "role": "reception",
+  "steps": [
+    {
+      "goto": "/help"
+    },
+    {
+      "expectApi": "GET /tutorials 200"
+    },
+    {
+      "expectText": "Search guides"
+    },
+    {
+      "expectNoText": "No guides are available yet."
+    },
+    {
+      "expectVisible": "h2:text-is(\"Bookings\")"
+    },
+    {
+      "expectVisible": "button:text-is(\"Play tour\")"
+    },
+    {
+      "click": "button:text-is(\"Play tour\")"
+    },
+    {
+      "expectVisible": "[role=\"dialog\"] h3:text-is(\"Reception sign-in tour\")"
+    },
+    {
+      "press": "Escape"
+    },
+    {
+      "expectHidden": "[role=\"dialog\"]"
+    },
+    {
+      "expectVisible": "li button:has-text(\"Create a booking\")"
+    },
+    {
+      "expectNoPageErrors": true
+    },
+    {
+      "screenshot": "help-reception"
+    }
+  ]
+}

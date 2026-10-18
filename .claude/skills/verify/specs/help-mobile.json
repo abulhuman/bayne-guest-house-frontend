@@ -1,0 +1,40 @@
+{
+  "name": "help-mobile",
+  "role": "reception",
+  "viewport": "phone",
+  "steps": [
+    {
+      "goto": "/help"
+    },
+    {
+      "expectApi": "GET /tutorials 200"
+    },
+    {
+      "expectVisible": "li button:has-text(\"Create a booking\")"
+    },
+    {
+      "expectFits": true
+    },
+    {
+      "click": "li button:has-text(\"Create a booking\")"
+    },
+    {
+      "expectVisible": "[role=\"dialog\"] video"
+    },
+    {
+      "expectFits": true
+    },
+    {
+      "press": "Escape"
+    },
+    {
+      "expectHidden": "[role=\"dialog\"]"
+    },
+    {
+      "expectNoPageErrors": true
+    },
+    {
+      "screenshot": "help-mobile"
+    }
+  ]
+}
