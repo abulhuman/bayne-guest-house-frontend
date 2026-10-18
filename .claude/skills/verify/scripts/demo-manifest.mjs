@@ -16,6 +16,7 @@ export function pagesForSpec(spec) {
     if (typeof path !== 'string') return [];
     const page = path.split(/[?#]/)[0];
     if (publicPages.has(page)) return [];
+    if (page === '/' && actor === 'security' && spec.demo?.group === 'security') return [];
     if (page === '/') return ROLES.includes(actor) && landingFor(actor) ? [landingFor(actor)] : [];
     return [page];
   }))].sort();
