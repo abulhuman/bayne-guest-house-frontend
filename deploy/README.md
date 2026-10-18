@@ -28,6 +28,7 @@ This installs manifests, the trusted deployment manager, and public configuratio
 - `NEXT_PUBLIC_API_BASE` is `https://api.almishotel.com` for production builds.
 - `PREVIEW_DOMAIN` is `almishotel.com`.
 - `BACKEND_IMAGE` pins the API image used by new frontend preview containers. Build or load that image on this host before deploying previews. Update it deliberately after testing backend changes.
+- `~/.local/share/almis/tutorials/main` is the fallback tutorial store. A matching `pr-N` directory is mounted into the frontend preview API when it exists. The signing key is read from the backend deployment's protected `cloudflared/tutorials-signing-key` file.
 - `EDGE_NETWORK`, `CLOUDFLARE_ZONE`, and `CLOUDFLARE_TUNNEL_ID` identify the existing shared infrastructure.
 
 Allow `https://manage.almishotel.com` in the production backend's `ALLOWED_ORIGINS` JSON array, then recreate the API container so it reads the changed environment. Preserve all existing origins and credentials. The frontend manager does not modify the backend's production configuration.
@@ -46,6 +47,8 @@ python3 ~/.local/share/bayne/frontend/manage.py remove-preview --pr 42
 ```
 
 The manager waits for healthy containers, runs pending migrations in the preview database, creates the preview admin, then publishes DNS. Re-deploying a PR preserves its database and credentials. Its generated login is stored in `~/.local/share/bayne/frontend/previews/pr-N/admin.env`. Do not post that file in PR comments. Closing a PR removes its DNS record, containers, private network, database volume, and credentials. Image tags remain available for rollback and can be removed separately when no longer needed.
+
+The frontend preview API mounts the same read-only tutorial store contract as the backend API. It sets `TUTORIALS_DIR=/srv/tutorials` and reads the HMAC key from `/run/secrets/tutorials-signing-key`; the key value never appears in preview environment metadata. A missing PR store uses `main`, so a preview remains usable while a PR has no affected recordings.
 
 A failed deployment can leave containers for inspection and retry. DNS is published only after local health checks pass. The deployment lock serializes host mutations. To roll back production, pass a retained prior frontend image to `manage.py main`; production database migrations are owned by the backend deployment.
 

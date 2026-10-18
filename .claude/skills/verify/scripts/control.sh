@@ -197,6 +197,55 @@ cmd_manifest() { node "$ROOT/.claude/skills/verify/scripts/demo-manifest.mjs" "$
 cmd_affected() { node "$ROOT/.claude/skills/verify/scripts/demo-affected.mjs" "$@"; }
 cmd_demo_index() { node "$ROOT/.claude/skills/verify/scripts/demo-index.mjs" "${1:-$DEMO_DIR}"; }
 
+cmd_publish() {
+  local target="${1:?usage: control.sh publish <target-dir>}"
+  local source="${PUBLISH_SOURCE:-$DEMO_DIR}"
+  node - "$source" "$target" <<'NODE'
+import { createHash } from 'node:crypto';
+import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+
+const [sourceArg, targetArg] = process.argv.slice(2);
+const source = resolve(sourceArg);
+const target = resolve(targetArg);
+const manifestPath = join(source, 'manifest.json');
+if (!existsSync(manifestPath)) throw new Error(`missing manifest: ${manifestPath}`);
+const incoming = JSON.parse(readFileSync(manifestPath, 'utf8'));
+if (incoming.version !== 1 || !Array.isArray(incoming.tutorials)) throw new Error('invalid manifest');
+mkdirSync(target, { recursive: true, mode: 0o700 });
+const existingPath = join(target, 'manifest.json');
+const existing = existsSync(existingPath) ? JSON.parse(readFileSync(existingPath, 'utf8')) : { version: 1, tutorials: [] };
+const merged = new Map((existing.tutorials ?? []).map((tutorial) => [tutorial.name, tutorial]));
+const media = new Set();
+for (const tutorial of incoming.tutorials) {
+  for (const file of [tutorial.video, tutorial.poster]) {
+    if (typeof file !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.(?:mp4|jpg|jpeg|png|webp)$/.test(file)) throw new Error(`unsafe media name: ${file}`);
+    const from = join(source, file);
+    if (!lstatSync(from).isFile()) throw new Error(`missing media: ${file}`);
+    const to = join(target, file);
+    if (!existsSync(to)) copyFileSync(from, to);
+    media.add(file);
+  }
+  const video = readFileSync(join(source, tutorial.video));
+  const sha = createHash('sha256').update(video).digest('hex');
+  if (sha !== tutorial.sha256) throw new Error(`digest mismatch: ${tutorial.name}`);
+  merged.set(tutorial.name, tutorial);
+}
+const output = { version: 1, tutorials: [...merged.values()].sort((a, b) => a.name.localeCompare(b.name)) };
+const temporary = join(target, `.manifest-${process.pid}.tmp`);
+writeFileSync(temporary, JSON.stringify(output, null, 2) + '\n', { flag: 'wx' });
+renameSync(temporary, existingPath);
+const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+const referenced = new Set(output.tutorials.flatMap((tutorial) => [tutorial.video, tutorial.poster]));
+for (const file of readdirSync(target)) {
+  if (!/\.(?:mp4|jpg|jpeg|png|webp)$/.test(file) || media.has(file) || referenced.has(file)) continue;
+  const path = join(target, file);
+  if (statSync(path).mtimeMs < cutoff) unlinkSync(path);
+}
+console.log(`PUBLISH ${output.tutorials.length} tutorials target=${target}`);
+NODE
+}
+
 # The backend skill keeps each response in one shared last.body, so concurrent drives must take turns.
 cmd_api() { load_state; { flock 9; backend "$@"; } 9>"$RUN_DIR/api.lock"; }
 
@@ -212,6 +261,7 @@ cmd_down() {
 
 case "${1:-}" in
   demo-index) shift; cmd_demo_index "$@" ;;
+  publish) shift; cmd_publish "$@" ;;
   up|doctor|drive|suite|demo|manifest|affected|api|down) c="$1"; shift; "cmd_$c" "$@" ;;
-  *) echo "usage: control.sh up|doctor|drive <spec>|suite [glob]|demo [glob]|manifest [dir]|affected <base> <head>|demo-index [dir]|api <backend control.sh args>|down"; exit 1 ;;
+  *) echo "usage: control.sh up|doctor|drive <spec>|suite [glob]|demo [glob]|manifest [dir]|affected <base> <head>|demo-index [dir]|publish <dir>|api <backend control.sh args>|down"; exit 1 ;;
 esac
