@@ -2,6 +2,7 @@
   "name": "store-remove-item",
   "role": "store",
   "demo": {
+    "audience": ["admin", "manager", "reception", "store"],
     "group": "store",
     "title": "Remove an item",
     "summary": "The storekeeper removes plastic straws, which the hotel no longer stocks."

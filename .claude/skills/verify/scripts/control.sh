@@ -187,10 +187,15 @@ cmd_demo() {
       grep -E '^(STEP [0-9]+ FAIL|SETUP FAIL|RESULT) ' <<<"$out" | sed 's/^/  /'
     fi
   done
-  node "$ROOT/.claude/skills/verify/scripts/demo-index.mjs" "$DEMOS" "$DEMO_DIR"
+  cmd_manifest "$DEMO_DIR" || return 1
+  cmd_demo_index || return 1
   echo "DEMOS pass=$pass fail=$fail index=$DEMO_DIR/index.html"
   (( fail == 0 ))
 }
+
+cmd_manifest() { node "$ROOT/.claude/skills/verify/scripts/demo-manifest.mjs" "${1:-$DEMO_DIR}"; }
+cmd_affected() { node "$ROOT/.claude/skills/verify/scripts/demo-affected.mjs" "$@"; }
+cmd_demo_index() { node "$ROOT/.claude/skills/verify/scripts/demo-index.mjs" "${1:-$DEMO_DIR}"; }
 
 # The backend skill keeps each response in one shared last.body, so concurrent drives must take turns.
 cmd_api() { load_state; { flock 9; backend "$@"; } 9>"$RUN_DIR/api.lock"; }
@@ -206,6 +211,7 @@ cmd_down() {
 }
 
 case "${1:-}" in
-  up|doctor|drive|suite|demo|api|down) c="$1"; shift; "cmd_$c" "$@" ;;
-  *) echo "usage: control.sh up|doctor|drive <spec>|suite [glob]|demo [glob]|api <backend control.sh args>|down"; exit 1 ;;
+  demo-index) shift; cmd_demo_index "$@" ;;
+  up|doctor|drive|suite|demo|manifest|affected|api|down) c="$1"; shift; "cmd_$c" "$@" ;;
+  *) echo "usage: control.sh up|doctor|drive <spec>|suite [glob]|demo [glob]|manifest [dir]|affected <base> <head>|demo-index [dir]|api <backend control.sh args>|down"; exit 1 ;;
 esac

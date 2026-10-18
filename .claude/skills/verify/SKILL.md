@@ -130,6 +130,22 @@ The event log records the viewport, device scale, frame count, duration and time
 
 ## Cleanup
 
+## Tutorial metadata and affected demos
+
+```bash
+$S manifest [dir]                # default .verify/demos; prints MANIFEST <n> tutorials <n> roles
+$S affected <base> <head>         # sorted demo names, one per line; empty output means no recording
+$S demo-index [dir]              # rebuild index.html from manifest.json
+```
+
+Run these commands on Node 24 or newer. `demo` generates the manifest and gallery after rendering. The manifest records actual ffprobe duration, SHA256, capture-file modification time, and the current commit. Set `SOURCE_COMMIT` to the recording commit when generating metadata later. Unchanged media keeps its original recording metadata. Video and poster names contain their own content hashes. The manifest is sorted and replaced atomically after all referenced files exist. Partial runs retain existing entries with verified media hashes.
+
+Audiences come from `lib/permissions.ts`. The generator considers direct navigation, asserted destinations after link clicks, and the actor's landing page for `/`. Sign-in group demos serve every role. Other primary roles must be able to open every demonstrated page. `demo.audience` can narrow this list for action permissions, such as room edits restricted to admin and manager. Invalid overrides fail and name the spec. Page access alone does not authorize mutations.
+
+The affected map follows alias and relative imports through components and libraries to pages. Shell, permission, recording-script, and dependency edits affect every demo. Demo edits affect that demo. Optional `demo.covers` path globs add dependencies missed by the import walk. Tours are affected when a page they demonstrate changes.
+
+## Cleanup
+
 ```bash
 $S down
 ```

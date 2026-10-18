@@ -2,6 +2,7 @@
   "name": "housekeeping-laundry-status",
   "role": "housekeeping",
   "demo": {
+    "audience": ["admin", "manager", "housekeeping"],
     "group": "housekeeping",
     "title": "Update a laundry order",
     "summary": "Housekeeping finds the pending laundry, marks an order in progress when washing starts, and done when it goes back to the guest."

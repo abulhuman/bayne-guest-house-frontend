@@ -2,6 +2,7 @@
   "name": "manager-edit-room-price",
   "role": "manager",
   "demo": {
+    "audience": ["admin", "manager"],
     "group": "manager",
     "title": "Change a room price",
     "summary": "The manager raises the nightly price of a double room for the new season."
