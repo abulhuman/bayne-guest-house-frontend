@@ -203,6 +203,7 @@ async function startCapture() {
 async function stopCapture() {
   const end = Date.now() - capture.excludedMs;
   const encodeStart = Date.now();
+  capture.cdp.removeAllListeners('Page.screencastFrame');
   await capture.cdp.send('Page.stopScreencast');
   const { frames, frameDir } = capture;
   const t0 = frames[0].t;
