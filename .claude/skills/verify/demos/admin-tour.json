@@ -40,10 +40,10 @@
     { "click": "aside nav a:text-is('Staff')" },
     { "expectUrl": "/staff" },
     { "caption": "Staff. Staff records and logins." },
+    { "poster": true },
     { "click": "aside nav a:text-is('Guests')" },
     { "expectUrl": "/guests" },
     { "caption": "Guests. Guest profiles." },
-    { "poster": true },
     { "click": { "role": "button", "name": "Logout" } },
     { "expectUrl": "/login" }
   ]
