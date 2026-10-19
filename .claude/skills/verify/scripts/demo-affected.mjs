@@ -16,7 +16,7 @@ export function affectedDemos({ changed, specs, sources }) {
   if (changed.some((file) => globalFiles.has(file) || file.startsWith('.claude/skills/verify/scripts/') || ['package.json', 'package-lock.json', 'next.config.ts', 'next.config.js', 'tsconfig.json'].includes(file))) return specs.map((s) => s.name).sort();
   const dependents = new Map();
   for (const [file, code] of Object.entries(sources)) {
-    const imports = /(?:\b(?:import|export)\s+(?:[^;'"\n]*?\s+from\s*)?|\bimport\s*\()\s*['"]([^'"]+)['"]/g;
+    const imports = /(?:\b(?:import|export)\s+(?:[^;'"]*?\s+from\s*)?|\bimport\s*\()\s*['"]([^'"]+)['"]/g;
     for (const match of code.matchAll(imports)) {
       const name = match[1];
       const base = name.startsWith('@/') ? name.slice(2) : name.startsWith('.') ? posix.normalize(posix.join(posix.dirname(file), name)) : null;

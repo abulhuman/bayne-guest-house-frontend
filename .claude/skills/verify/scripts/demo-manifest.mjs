@@ -50,6 +50,44 @@ function digest(file) {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
 
+function boxes(bytes, start = 0, end = bytes.length) {
+  const result = [];
+  for (let offset = start; offset < end;) {
+    if (offset + 8 > end) return [];
+    let size = bytes.readUInt32BE(offset);
+    let header = 8;
+    if (size === 1) {
+      if (offset + 16 > end) return [];
+      size = Number(bytes.readBigUInt64BE(offset + 8));
+      header = 16;
+    } else if (size === 0) size = end - offset;
+    if (!Number.isSafeInteger(size) || size < header || offset + size > end) return [];
+    result.push({ type: bytes.toString('ascii', offset + 4, offset + 8), start: offset + header, end: offset + size });
+    offset += size;
+  }
+  return result;
+}
+
+function mediaDuration(file) {
+  const bytes = readFileSync(file);
+  const movie = boxes(bytes).find((box) => box.type === 'moov');
+  const children = movie ? boxes(bytes, movie.start, movie.end) : [];
+  const header = children.find((box) => box.type === 'mvhd');
+  if (header && !children.some((box) => box.type === 'mvex')) {
+    const version = bytes[header.start];
+    const scaleOffset = header.start + (version === 1 ? 20 : 12);
+    const length = version === 1 ? 12 : 8;
+    if ((version === 0 || version === 1) && scaleOffset + length <= header.end) {
+      const scale = bytes.readUInt32BE(scaleOffset);
+      const ticks = version === 1 ? Number(bytes.readBigUInt64BE(scaleOffset + 4)) : bytes.readUInt32BE(scaleOffset + 4);
+      if (scale > 0 && Number.isSafeInteger(ticks) && ticks > 0 && ticks !== 0xffffffff) return Number((ticks / scale).toFixed(6));
+    }
+  }
+  const duration = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', file], { encoding: 'utf8' }).trim());
+  if (!Number.isFinite(duration) || duration <= 0) throw new Error(`${file}: invalid media duration`);
+  return duration;
+}
+
 export function writeManifest({ specsDir, outDir, sourceCommit }) {
   mkdirSync(outDir, { recursive: true });
   const previous = existsSync(join(outDir, 'manifest.json')) ? JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf8')) : { tutorials: [] };
@@ -63,8 +101,9 @@ export function writeManifest({ specsDir, outDir, sourceCommit }) {
       const old = prior.get(spec.name);
       if (old) {
         if (digest(join(outDir, old.video)) !== old.sha256) throw new Error(`${spec.name}: retained video digest mismatch`);
-        digest(join(outDir, old.poster));
-        tutorials.push({ ...old, audience, pages: pagesForSpec(spec) });
+        const posterHash = digest(join(outDir, old.poster));
+        if (old.poster !== `${spec.name}.${posterHash.slice(0, 16)}.jpg`) throw new Error(`${spec.name}: retained poster digest mismatch`);
+        tutorials.push({ ...old, durationSec: mediaDuration(join(outDir, old.video)), audience, pages: pagesForSpec(spec) });
       }
       continue;
     }
@@ -73,8 +112,7 @@ export function writeManifest({ specsDir, outDir, sourceCommit }) {
     const posterHash = digest(posterPath);
     const video = `${spec.name}.${sha256.slice(0, 16)}.mp4`;
     const poster = `${spec.name}.${posterHash.slice(0, 16)}.jpg`;
-    const durationSec = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', videoPath], { encoding: 'utf8' }).trim());
-    if (!Number.isFinite(durationSec) || durationSec <= 0) throw new Error(`${spec.name}: invalid media duration`);
+    const durationSec = mediaDuration(videoPath);
     const old = prior.get(spec.name);
     const unchanged = old?.sha256 === sha256 && old?.poster === poster;
     const recordedAt = unchanged ? old.recordedAt : lstatSync(videoPath).mtime.toISOString();
