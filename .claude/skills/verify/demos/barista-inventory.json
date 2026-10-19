@@ -22,6 +22,7 @@
     { "click": { "role": "button", "name": "Subtract" } },
     { "fill": { "label": "Quantity (kg)" }, "value": "2" },
     { "fill": { "label": "Reason (optional)" }, "value": "Morning shift, coffee service" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Confirm" } },
     { "expectApi": "POST /inventory/${ITEM}/movements 201" },
     { "expectText": "10 kg" },

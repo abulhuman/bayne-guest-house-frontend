@@ -30,6 +30,7 @@
     { "caption": "The booking is filled in. Choose the method." },
     { "select": { "label": "Method" }, "value": "mobile" },
     { "fill": { "label": "Description / Reason (optional)" }, "value": "Paid with telebirr" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Record" } },
     { "expectApi": "POST /payments 201" },
     { "expectHidden": "role=dialog" },

@@ -27,6 +27,7 @@
     { "click": "role=dialog >> button[title='Add row']" },
     { "fill": "role=dialog >> input[placeholder='Item name'] >> nth=1", "value": "Trousers" },
     { "expectText": "Preview: 2 Shirts, 1 Trousers" },
+    { "poster": true },
     { "caption": "Step 3. Save the order." },
     { "click": { "role": "button", "name": "Save Laundry" } },
     { "expectApi": "POST /laundry 201" },
