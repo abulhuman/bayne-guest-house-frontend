@@ -69,7 +69,6 @@ function HelpInner() {
     <div className="mx-auto w-full max-w-6xl">
       <HelpHero name={user.name} role={role} />
       <StartHere role={role} tutorials={tutorials.rows} onOpen={openTutorial} />
-      <WhatsNew tutorials={fresh} onOpen={openTutorial} />
       <Panel className="mb-6 p-4 md:p-5">
         <label htmlFor="help-search" className="text-sm font-semibold">Search guides</label>
         <div className="mt-2 flex items-center gap-3">
@@ -77,13 +76,14 @@ function HelpInner() {
           <kbd className="hidden rounded-input border border-line px-2 py-1 font-mono text-xs text-muted sm:inline">/</kbd>
         </div>
       </Panel>
+      <WhatsNew tutorials={fresh} onOpen={openTutorial} />
       {playError && <p role="alert" className="mb-4 text-danger">Couldn&apos;t open this guide. Please try again.</p>}
       <ListState list={tutorials} empty={query ? 'No guides match your search.' : 'No guides are available yet.'}>
         {tutorials.rows.length > 0 && filtered.length === 0 && <p className="p-6 text-muted">No guides match your search.</p>}
         <TutorialLedger groups={groups} onOpen={openTutorial} />
         {splitRoles && other.length > 0 && <details className="mt-6 rounded-panel border border-line bg-surface p-5"><summary className="cursor-pointer text-lg font-bold">Other roles</summary><div className="mt-4"><TutorialLedger groups={groupTutorials(other, role)} onOpen={openTutorial} /></div></details>}
       </ListState>
-      <PlayerModal tutorial={selected} onClose={() => { playbackRequest.current += 1; setSelected(null); }} />
+      {selected && <PlayerModal tutorial={selected} onClose={() => { playbackRequest.current += 1; setSelected(null); }} />}
     </div>
   </Layout>;
 }
