@@ -50,31 +50,42 @@ function digest(file) {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
 
-function mediaDurations(files, outDir) {
-  if (!files.length) return [];
-  const list = join(outDir, `.durations-${process.pid}.ffconcat`);
-  try {
-    const quote = (file) => "'" + resolve(file).replaceAll("'", "'\\''") + "'";
-    writeFileSync(list, 'ffconcat version 1.0\n' + files.map((file) => `file ${quote(file)}\n`).join(''), { flag: 'wx' });
-    const output = execFileSync('ffprobe', ['-v', 'error', '-f', 'concat', '-safe', '0', '-segment_time_metadata', '1',
-      '-i', list, '-show_entries', 'packet_tags', '-of', 'json'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
-    const clips = new Map();
-    for (const { tags } of JSON.parse(output).packets) {
-      const start = tags?.['lavf.concatdec.start_time'];
-      const duration = Number(tags?.['lavf.concatdec.duration']) / 1e6;
-      if (start === undefined || !Number.isFinite(duration) || duration <= 0) throw new Error('invalid concat duration');
-      if (clips.has(start) && clips.get(start) !== duration) throw new Error('inconsistent concat duration');
-      clips.set(start, duration);
+function boxes(bytes, start = 0, end = bytes.length) {
+  const result = [];
+  for (let offset = start; offset < end;) {
+    if (offset + 8 > end) return [];
+    let size = bytes.readUInt32BE(offset);
+    let header = 8;
+    if (size === 1) {
+      if (offset + 16 > end) return [];
+      size = Number(bytes.readBigUInt64BE(offset + 8));
+      header = 16;
+    } else if (size === 0) size = end - offset;
+    if (!Number.isSafeInteger(size) || size < header || offset + size > end) return [];
+    result.push({ type: bytes.toString('ascii', offset + 4, offset + 8), start: offset + header, end: offset + size });
+    offset += size;
+  }
+  return result;
+}
+
+function mediaDuration(file) {
+  const bytes = readFileSync(file);
+  const movie = boxes(bytes).find((box) => box.type === 'moov');
+  const children = movie ? boxes(bytes, movie.start, movie.end) : [];
+  const header = children.find((box) => box.type === 'mvhd');
+  if (header && !children.some((box) => box.type === 'mvex')) {
+    const version = bytes[header.start];
+    const scaleOffset = header.start + (version === 1 ? 20 : 12);
+    const length = version === 1 ? 12 : 8;
+    if ((version === 0 || version === 1) && scaleOffset + length <= header.end) {
+      const scale = bytes.readUInt32BE(scaleOffset);
+      const ticks = version === 1 ? Number(bytes.readBigUInt64BE(scaleOffset + 4)) : bytes.readUInt32BE(scaleOffset + 4);
+      if (scale > 0 && Number.isSafeInteger(ticks) && ticks > 0 && ticks !== 0xffffffff) return Number((ticks / scale).toFixed(6));
     }
-    if (clips.size !== files.length) throw new Error('incomplete concat metadata');
-    return [...clips.values()];
-  } catch {
-    return files.map((file) => {
-      const duration = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', file], { encoding: 'utf8' }).trim());
-      if (!Number.isFinite(duration) || duration <= 0) throw new Error(`${file}: invalid media duration`);
-      return duration;
-    });
-  } finally { if (existsSync(list)) unlinkSync(list); }
+  }
+  const duration = Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=nw=1:nk=1', file], { encoding: 'utf8' }).trim());
+  if (!Number.isFinite(duration) || duration <= 0) throw new Error(`${file}: invalid media duration`);
+  return duration;
 }
 
 export function writeManifest({ specsDir, outDir, sourceCommit }) {
@@ -92,7 +103,7 @@ export function writeManifest({ specsDir, outDir, sourceCommit }) {
         if (digest(join(outDir, old.video)) !== old.sha256) throw new Error(`${spec.name}: retained video digest mismatch`);
         const posterHash = digest(join(outDir, old.poster));
         if (old.poster !== `${spec.name}.${posterHash.slice(0, 16)}.jpg`) throw new Error(`${spec.name}: retained poster digest mismatch`);
-        tutorials.push({ ...old, audience, pages: pagesForSpec(spec) });
+        tutorials.push({ ...old, durationSec: mediaDuration(join(outDir, old.video)), audience, pages: pagesForSpec(spec) });
       }
       continue;
     }
@@ -101,6 +112,7 @@ export function writeManifest({ specsDir, outDir, sourceCommit }) {
     const posterHash = digest(posterPath);
     const video = `${spec.name}.${sha256.slice(0, 16)}.mp4`;
     const poster = `${spec.name}.${posterHash.slice(0, 16)}.jpg`;
+    const durationSec = mediaDuration(videoPath);
     const old = prior.get(spec.name);
     const unchanged = old?.sha256 === sha256 && old?.poster === poster;
     const recordedAt = unchanged ? old.recordedAt : lstatSync(videoPath).mtime.toISOString();
@@ -113,10 +125,8 @@ export function writeManifest({ specsDir, outDir, sourceCommit }) {
       } else copyFileSync(src, target);
     }
     tutorials.push({ name: spec.name, title: spec.demo.title, summary: spec.demo.summary, group: spec.demo.group ?? spec.role,
-      primaryRole: spec.demo.as ?? spec.role, audience, pages: pagesForSpec(spec), durationSec: 0, video, poster, sha256, recordedAt, sourceCommit: commit });
+      primaryRole: spec.demo.as ?? spec.role, audience, pages: pagesForSpec(spec), durationSec, video, poster, sha256, recordedAt, sourceCommit: commit });
   }
-  const durations = mediaDurations(tutorials.map((tutorial) => join(outDir, tutorial.video)), outDir);
-  tutorials.forEach((tutorial, index) => { tutorial.durationSec = durations[index]; });
   const manifest = { version: 1, tutorials };
   const temporary = join(outDir, `.manifest-${process.pid}.tmp`);
   try {
