@@ -295,7 +295,9 @@ async function target(t) {
   if (t.text) return root.getByText(t.text, { exact: true }).first();
   throw new Error(`unknown target ${JSON.stringify(t)}`);
 }
-const settle = () => page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
+const networkIdle = () => page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
+// Once an iframe commits, Playwright can leave networkidle unset until another request ends, so a recorded action also stops at apiQuiet.
+const settle = () => (RECORDING ? Promise.race([networkIdle(), apiQuiet()]) : networkIdle());
 // networkidle resolves at once after the first load, so track our own pending requests instead.
 async function apiQuiet() {
   const end = Date.now() + 5_000;
