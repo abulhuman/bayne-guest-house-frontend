@@ -20,12 +20,12 @@
     { "expectText": "Ifrah Abdi" },
     { "expectText": "Omar Ibrahim" },
     { "expectNoText": "Abdirizak Hassan" },
-    { "poster": true },
     { "caption": "Only the housekeeping team is left in the list." },
     { "caption": "A phone number works as well." },
     { "fill": { "placeholder": "Search name, role, phone, barcode, email…" }, "value": "0919012345" },
     { "expectText": "Hawa Osman" },
     { "expectNoText": "Ifrah Abdi" },
+    { "poster": true },
     { "apiCheck": { "as": "admin", "path": "/staff", "jq": "any(.[]; .name == \"Ifrah Abdi\" and .role == \"housekeeping\")" } }
   ]
 }
