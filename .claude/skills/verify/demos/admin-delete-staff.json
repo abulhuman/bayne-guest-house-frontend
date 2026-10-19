@@ -14,9 +14,9 @@
   "steps": [
     { "goto": "/staff" },
     { "caption": "Asha Mohamed has left the hotel. Remove her record." },
+    { "poster": true },
     { "click": "tr:has-text('Asha Mohamed') >> role=button[name='Delete']" },
     { "expectVisible": { "role": "dialog", "name": "Confirm Deletion" } },
-    { "poster": true },
     { "caption": "The app asks first, because this also deletes her login." },
     { "click": { "role": "button", "name": "Delete" } },
     { "expectApi": "DELETE /staff/${STAFF} 200" },

@@ -21,11 +21,11 @@
     { "click": "tr:has-text('Abdirahman Mohamed') >> nth=-1 >> role=button[name='Edit']" },
     { "caption": "Enter the time he left, 5 PM." },
     { "fill": { "label": "Check-out" }, "value": "${DATE+0}T17:00" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Save" } },
     { "expectApi": "PATCH /attendance/${ATT} 200" },
     { "expectHidden": { "role": "dialog" } },
     { "expectVisible": "tr:has-text('Abdirahman Mohamed'):has-text('8.50') >> nth=-1" },
-    { "poster": true },
     { "caption": "The shift now shows 8.5 hours worked." },
     { "apiCheck": { "as": "manager", "path": "/attendance/${ATT}", "jq": ".checkOut | startswith(\"${DATE+0}T14:00:00\")" } }
   ]

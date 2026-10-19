@@ -28,9 +28,9 @@
     { "caption": "Later the clean clothes go back to the guest. Mark it done." },
     { "click": "tr:has-text('4 Shirts, 1 Suit jacket') >> nth=0 >> role=button[name='Edit']" },
     { "select": "tr:has-text('Mohamed Abdi') >> nth=0 >> select", "value": "done" },
+    { "poster": true },
     { "click": "tr:has-text('Mohamed Abdi') >> nth=0 >> role=button[name='Save']" },
     { "expectVisible": "tr:has-text('4 Shirts, 1 Suit jacket'):has-text('done') >> nth=0" },
-    { "poster": true },
     { "caption": "The order now shows as done." },
     { "apiCheck": { "as": "housekeeping", "path": "/laundry", "jq": "any(.[]; .id == ${LID} and .status == \"done\")" } }
   ]
