@@ -26,7 +26,6 @@
     { "click": { "role": "button", "name": "Refund" } },
     { "expectApi": "PATCH /payments/${PAY} 200" },
     { "expectText": "Payment refunded" },
-    { "poster": true },
     { "expectHidden": "tr:has-text('1 Silk scarf, 1 Blouse') >> nth=0 >> role=button[name='Refund']" },
     { "caption": "The 240 birr is marked refunded and the button is gone." },
     { "apiCheck": { "as": "manager", "path": "/payments", "jq": "any(.[]; .laundryId == ${LID} and .status == \"refunded\")" } }

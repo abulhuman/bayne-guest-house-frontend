@@ -8,7 +8,9 @@
     "summary": "Manager signs in and sees 9 pages: Dashboard, Bookings, Laundry, Attendance, Payments, Inventory, Rooms, Staff, Guests."
   },
   "setup": [
-    { "as": "manager", "method": "GET", "path": "/auth/me", "expect": 200 }
+    { "as": "manager", "method": "GET", "path": "/auth/me", "expect": 200 },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Khadra Hassan", "phone": "0912774601" }, "expect": 201, "save": "GUEST" },
+    { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "3 Cotton towels", "price": 75 }, "expect": 201 }
   ],
   "steps": [
     { "goto": "/login" },
@@ -24,11 +26,13 @@
     { "caption": "Bookings. Every guest stay." },
     { "click": "aside nav a:text-is('Laundry')" },
     { "expectUrl": "/laundry" },
-    { "caption": "Laundry. Guest laundry orders." },
+    { "fill": { "placeholder": "Search by guest, items, status…" }, "value": "3 Cotton towels" },
+    { "expectVisible": "tr:has-text('3 Cotton towels')" },
+    { "caption": "Filter laundry by item to find a guest order." },
+    { "poster": true },
     { "click": "aside nav a:text-is('Attendance')" },
     { "expectUrl": "/attendance" },
     { "caption": "Attendance. Staff hours worked." },
-    { "poster": true },
     { "click": "aside nav a:text-is('Payments')" },
     { "expectUrl": "/payments" },
     { "caption": "Payments. Record payments, see unpaid stays." },

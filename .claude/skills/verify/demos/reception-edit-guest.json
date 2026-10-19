@@ -18,10 +18,10 @@
     { "expectValue": { "label": "Phone" }, "value": "0914556677" },
     { "caption": "Replace the old number and save." },
     { "fill": { "label": "Phone" }, "value": "0914998877" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Save changes" } },
     { "expectApi": "PATCH /guests/${G} 200" },
     { "expectText": "0914998877" },
-    { "poster": true },
     { "caption": "The list shows the new number." },
     { "apiCheck": { "as": "reception", "path": "/guests/${G}", "jq": ".phone == \"0914998877\" and .name == \"Fadumo Yusuf\"" } }
   ]
