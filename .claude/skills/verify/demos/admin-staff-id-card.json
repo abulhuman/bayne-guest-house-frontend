@@ -17,6 +17,7 @@
     { "expectVisible": { "role": "dialog", "name": "ID card" } },
     { "expectVisible": { "role": "link", "name": "Download" } },
     { "expectVisible": { "role": "button", "name": "Print" } },
+    { "poster": true },
     { "caption": "Download the card or print it on A4 from here." },
     { "wait": 1500 },
     { "click": { "role": "button", "name": "Close" } },

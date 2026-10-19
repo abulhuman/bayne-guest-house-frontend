@@ -14,6 +14,7 @@
     { "goto": "/rooms" },
     { "caption": "The Rooms page lists every room with its nightly price." },
     { "click": { "role": "button", "name": "Add Room" } },
+    { "poster": true },
     { "caption": "Enter the room number, type and price in birr." },
     { "fill": { "label": "Number" }, "value": "503" },
     { "fill": { "label": "Type" }, "value": "Suite" },
