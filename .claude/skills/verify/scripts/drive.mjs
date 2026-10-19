@@ -184,14 +184,15 @@ async function startCapture() {
   const initial = join(frameDir, 'initial.jpg');
   await page.screenshot({ path: initial, type: 'jpeg', quality: 90 });
   const frames = [{ f: initial, t: Date.now() }];
-  capture = { cdp, frames, frameDir, excludedMs: 0, paused: false, startedAt: Date.now() };
-  cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
+  const onFrame = ({ data, metadata, sessionId }) => {
     cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
     if (capture.paused || metadata.timestamp * 1000 - capture.excludedMs <= frames.at(-1).t) return;
     const f = join(frameDir, `${String(frames.length).padStart(6, '0')}.jpg`);
     writeFileSync(f, Buffer.from(data, 'base64'));
     frames.push({ f, t: metadata.timestamp * 1000 - capture.excludedMs });
-  });
+  };
+  capture = { cdp, frames, frameDir, excludedMs: 0, paused: false, startedAt: Date.now(), onFrame };
+  cdp.on('Page.screencastFrame', onFrame);
   await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: viewport.width * 2, maxHeight: viewport.height * 2 });
   const deadline = Date.now() + STEP_TIMEOUT;
   while (!frames.length) {
@@ -201,11 +202,13 @@ async function startCapture() {
   ev('start');
 }
 async function stopCapture() {
-  const end = Date.now() - capture.excludedMs;
+  const current = capture;
+  current.paused = true;
+  current.cdp.off('Page.screencastFrame', current.onFrame);
+  const end = Date.now() - current.excludedMs;
   const encodeStart = Date.now();
-  capture.cdp.removeAllListeners('Page.screencastFrame');
-  await capture.cdp.send('Page.stopScreencast');
-  const { frames, frameDir } = capture;
+  await current.cdp.send('Page.stopScreencast');
+  const { frames, frameDir } = current;
   const t0 = frames[0].t;
   const quote = (path) => path.replace(/'/g, "'\\''");
   const list = frames.map((fr, i) => `file '${quote(fr.f)}'\nduration ${Math.max(0.001, ((frames[i + 1]?.t ?? end) - fr.t) / 1000).toFixed(4)}`);
@@ -213,10 +216,10 @@ async function stopCapture() {
   execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', join(frameDir, 'list.txt'),
     '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p', '-fps_mode', 'passthrough', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-f', 'matroska', DEMO_OUT]);
   writeFileSync(DEMO_OUT.replace(/\.src\.mkv$/, '.events.json'), JSON.stringify({ viewport, dsf: 2, fps: 30, frames: frames.length,
-    events: events.map((e) => ({ ...e, t: Math.max(0, e.t - t0) })), end: end - t0, captureWallMs: Date.now() - capture.startedAt, sourceEncodeMs: Date.now() - encodeStart }, null, 2));
+    events: events.map((e) => ({ ...e, t: Math.max(0, e.t - t0) })), end: end - t0, captureWallMs: Date.now() - current.startedAt, sourceEncodeMs: Date.now() - encodeStart }, null, 2));
   rmSync(frameDir, { recursive: true });
-  console.log(`CAPTURE wall=${((Date.now() - capture.startedAt) / 1000).toFixed(2)}s sourceEncode=${((Date.now() - encodeStart) / 1000).toFixed(2)}s frames=${frames.length}`);
-  await capture.cdp.detach();
+  console.log(`CAPTURE wall=${((Date.now() - current.startedAt) / 1000).toFixed(2)}s sourceEncode=${((Date.now() - encodeStart) / 1000).toFixed(2)}s frames=${frames.length}`);
+  await current.cdp.detach();
 }
 async function boxOf(el) {
   const box = await el.boundingBox().catch(() => null);
