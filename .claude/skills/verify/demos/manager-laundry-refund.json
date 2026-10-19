@@ -21,6 +21,7 @@
     { "caption": "Paid orders have a Refund button." },
     { "click": "tr:has-text('1 Silk scarf, 1 Blouse') >> nth=0 >> role=button[name='Refund']" },
     { "expectText": "Refund this order's payment of ETB\u00a0240.00?" },
+    { "poster": true },
     { "caption": "Check the amount, then confirm." },
     { "click": { "role": "button", "name": "Refund" } },
     { "expectApi": "PATCH /payments/${PAY} 200" },

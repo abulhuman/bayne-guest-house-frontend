@@ -26,6 +26,7 @@
     { "caption": "Refunded. Now the order can be deleted." },
     { "click": "tr:has-text('Ruqiya Mohamed'):has-text('5 Towels') >> role=button[name='Delete']" },
     { "expectText": "This removes the record for Ruqiya Mohamed." },
+    { "poster": true },
     { "click": { "role": "button", "name": "Delete" } },
     { "expectApi": "DELETE /laundry/${LID} 200" },
     { "expectNoText": "5 Towels" },

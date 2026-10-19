@@ -18,6 +18,7 @@
     { "click": { "role": "button", "name": "Remove Item" } },
     { "caption": "The app asks to confirm before removing it." },
     { "expectText": "Confirm removal" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Confirm Remove" } },
     { "expectApi": "DELETE /inventory/${ITEM} 200" },
     { "expectNoText": "Plastic straws" },

@@ -18,6 +18,7 @@
     { "caption": "Adjust sets the exact quantity instead of adding or subtracting." },
     { "fill": { "label": "Quantity (pcs)" }, "value": "74" },
     { "fill": { "label": "Reason (optional)" }, "value": "Monthly stock count" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Confirm" } },
     { "expectApi": "POST /inventory/${ITEM}/movements 201" },
     { "expectText": "74 pcs" },

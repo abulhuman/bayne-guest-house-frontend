@@ -17,6 +17,7 @@
     { "caption": "Safiya called to stay one more night and wants a double room." },
     { "click": "tr:has-text('112 — single') >> role=button[name='Edit']" },
     { "expectText": "Edit Booking" },
+    { "poster": true },
     { "caption": "Move the check-out one day later." },
     { "fill": { "label": "Check-out" }, "value": "${DATE+8}" },
     { "caption": "Pick a room that is free for the new dates." },

@@ -14,6 +14,7 @@
     { "fill": { "label": "Full name" }, "value": "Yasin Hassan" },
     { "fill": { "label": "Phone" }, "value": "0933445566" },
     { "fill": { "label": "Email" }, "value": "yasin.${RUN}@example.com" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Add Guest" } },
     { "expectApi": "POST /guests 201" },
     { "expectText": "yasin.${RUN}@example.com" },

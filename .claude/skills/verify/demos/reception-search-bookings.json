@@ -31,6 +31,7 @@
     { "fill": { "placeholder": "Search by guest, room, date…" }, "value": "116" },
     { "expectText": "Asha Yusuf" },
     { "expectNoText": "Sahra Ahmed" },
+    { "poster": true },
     { "caption": "A room number works too." },
     { "fill": { "placeholder": "Search by guest, room, date…" }, "value": "" },
     { "expectText": "Abdirahman Mohamed" },

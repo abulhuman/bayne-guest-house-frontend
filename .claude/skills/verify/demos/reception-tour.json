@@ -31,6 +31,7 @@
     { "click": "aside nav a:text-is('Payments')" },
     { "expectUrl": "/payments" },
     { "caption": "Payments. Record payments, see unpaid stays." },
+    { "poster": true },
     { "click": "aside nav a:text-is('Inventory')" },
     { "expectUrl": "/inventory" },
     { "caption": "Inventory. Stock levels and changes." },
@@ -40,7 +41,6 @@
     { "click": "aside nav a:text-is('Guests')" },
     { "expectUrl": "/guests" },
     { "caption": "Guests. Guest profiles." },
-    { "poster": true },
     { "click": { "role": "button", "name": "Logout" } },
     { "expectUrl": "/login" }
   ]

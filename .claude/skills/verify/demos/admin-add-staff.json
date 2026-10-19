@@ -21,6 +21,7 @@
     { "fill": { "label": "Emergency contact (optional)" }, "value": "Ahmed Ali 0911556677" },
     { "fill": { "label": "Email" }, "value": "hodan.${RUN}@almis.et" },
     { "click": { "role": "button", "name": "Continue" } },
+    { "poster": true },
     { "caption": "Step 2. Review the one-time password." },
     { "click": { "role": "button", "name": "Create Staff & Account" } },
     { "expectApi": "POST /staff 201" },

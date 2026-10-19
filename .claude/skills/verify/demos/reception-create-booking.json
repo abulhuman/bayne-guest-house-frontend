@@ -23,6 +23,7 @@
     { "select": { "label": "Room" }, "value": "${ROOM}" },
     { "click": { "role": "button", "name": "Next" } },
     { "caption": "Step 3. Review and confirm." },
+    { "poster": true },
     { "click": { "role": "button", "name": "Create booking" } },
     { "expectApi": "POST /bookings 201" },
     { "expectText": "Booking created successfully" },

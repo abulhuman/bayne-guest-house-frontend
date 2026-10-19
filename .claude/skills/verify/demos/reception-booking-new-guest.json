@@ -26,6 +26,7 @@
     { "click": { "role": "button", "name": "Next" } },
     { "expectText": "Abdi Omar — 0922334455 (new)" },
     { "caption": "Step 3. Review. The guest is marked new and gets saved with the booking." },
+    { "poster": true },
     { "click": { "role": "button", "name": "Create booking" } },
     { "expectApi": "POST /guests 201" },
     { "expectApi": "POST /bookings 201" },

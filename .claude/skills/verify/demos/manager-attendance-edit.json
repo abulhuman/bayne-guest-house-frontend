@@ -29,6 +29,7 @@
     { "expectApi": "PATCH /attendance/${ATT} 200" },
     { "expectHidden": { "role": "dialog" } },
     { "expectVisible": "tr:has-text('Rahma Yusuf'):has-text('8.00') >> nth=-1" },
+    { "poster": true },
     { "caption": "The shift now shows the right 8 hours." },
     { "apiCheck": { "as": "manager", "path": "/attendance/${ATT}", "jq": "(.checkIn | startswith(\"${DATE+0}T04:00:00\")) and (.checkOut | startswith(\"${DATE+0}T12:00:00\"))" } }
   ]
