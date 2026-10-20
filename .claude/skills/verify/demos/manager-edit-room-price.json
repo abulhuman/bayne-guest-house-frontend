@@ -23,6 +23,8 @@
     { "expectText": "ETB\u00a02,000.00" },
     { "fill": { "placeholder": "Search…" }, "value": "511" },
     { "expectVisible": "tr:has-text('511'):has-text('ETB\u00a02,000.00')" },
+    { "click": "tr:has-text('511') >> role=button[name='Edit']" },
+    { "expectVisible": { "role": "dialog", "name": "Edit Room" } },
     { "poster": true },
     { "caption": "Room 511 now shows 2,000 birr." },
     { "apiCheck": { "as": "manager", "path": "/rooms/${ROOM}", "jq": ".price == 2000" } }
