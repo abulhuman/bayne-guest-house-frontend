@@ -18,6 +18,7 @@
     { "caption": "Change her role and phone, then save." },
     { "select": { "label": "Role" }, "value": "reception" },
     { "fill": { "label": "Phone" }, "value": "0935112233" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Save Changes" } },
     { "expectApi": "PUT /staff/${STAFF} 200" },
     { "expectText": "0935112233" },
