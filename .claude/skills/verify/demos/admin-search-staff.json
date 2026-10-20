@@ -27,14 +27,13 @@
     { "fill": { "placeholder": "Search name, role, phone, barcode, email…" }, "value": "0919012345" },
     { "expectText": "Hawa Osman" },
     { "expectNoText": "Ifrah Abdi" },
+    { "poster": true },
     { "caption": "Open the one result to confirm it is the right staff record." },
     { "click": "tr:has-text('Hawa Osman') >> role=button[name='Edit']" },
     { "expectVisible": { "role": "dialog", "name": "Edit Staff" } },
     { "click": { "role": "button", "name": "Cancel" } },
     { "click": "tr:has-text('Hawa Osman') >> role=button[name='ID card']" },
     { "expectVisible": { "role": "dialog", "name": "ID card" } },
-    { "wait": 1500 },
-    { "poster": true },
     { "click": { "role": "button", "name": "Close" } },
     { "apiCheck": { "as": "admin", "path": "/staff", "jq": "any(.[]; .name == \"Ifrah Abdi\" and .role == \"housekeeping\")" } }
   ]
