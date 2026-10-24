@@ -2,6 +2,7 @@
   "name": "manager-add-room",
   "role": "manager",
   "demo": {
+    "audience": ["admin", "manager"],
     "group": "manager",
     "title": "Add a room",
     "summary": "The manager adds a new room with its type and nightly price so reception can book it."

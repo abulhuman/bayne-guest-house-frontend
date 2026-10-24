@@ -2,6 +2,7 @@
   "name": "store-add-item",
   "role": "store",
   "demo": {
+    "audience": ["admin", "manager", "reception", "store"],
     "group": "store",
     "title": "Add an inventory item",
     "summary": "The storekeeper adds coffee beans to inventory with an opening quantity and a low-stock threshold."

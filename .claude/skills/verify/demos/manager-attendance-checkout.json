@@ -2,6 +2,7 @@
   "name": "manager-attendance-checkout",
   "role": "manager",
   "demo": {
+    "audience": ["admin", "manager"],
     "group": "manager",
     "title": "Record a check-out",
     "summary": "The manager adds the end of shift for a staff member who checked in this morning, so the day's hours add up."

@@ -2,6 +2,7 @@
   "name": "manager-laundry-delete",
   "role": "manager",
   "demo": {
+    "audience": ["admin", "manager"],
     "group": "manager",
     "title": "Delete a laundry order",
     "summary": "The manager deletes an order taken by mistake. A paid order must be refunded before it can be deleted."

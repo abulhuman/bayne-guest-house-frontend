@@ -2,6 +2,7 @@
   "name": "manager-laundry-refund",
   "role": "manager",
   "demo": {
+    "audience": ["admin", "manager", "reception"],
     "group": "manager",
     "title": "Refund a laundry order",
     "summary": "The manager refunds a guest's laundry payment after a complaint, with a confirmation step so nobody refunds by accident."

@@ -2,6 +2,7 @@
   "name": "manager-attendance-edit",
   "role": "manager",
   "demo": {
+    "audience": ["admin", "manager"],
     "group": "manager",
     "title": "Fix a wrong shift time",
     "summary": "The manager corrects a shift that was logged with the wrong times, and the form refuses a check-out before the check-in."

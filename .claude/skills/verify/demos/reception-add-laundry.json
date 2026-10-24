@@ -2,6 +2,7 @@
   "name": "reception-add-laundry",
   "role": "reception",
   "demo": {
+    "audience": ["admin", "manager", "reception"],
     "group": "reception",
     "title": "Take a laundry order",
     "summary": "Reception logs a guest's laundry with its items and price, and the charge lands on the Payments page by itself."

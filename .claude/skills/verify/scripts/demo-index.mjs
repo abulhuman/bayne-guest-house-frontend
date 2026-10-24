@@ -1,15 +1,13 @@
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-const [demos, out] = process.argv.slice(2);
+const [out] = process.argv.slice(2);
 const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const specs = readdirSync(demos).filter((f) => f.endsWith('.json')).sort()
-  .map((f) => ({ name: f.slice(0, -5), ...JSON.parse(readFileSync(join(demos, f), 'utf8')) }))
-  .filter((s) => existsSync(join(out, `${s.name}.mp4`)));
-const groups = Map.groupBy(specs, (s) => s.demo.group ?? s.role);
+const { tutorials: specs } = JSON.parse(readFileSync(join(out, 'manifest.json'), 'utf8'));
+const groups = Map.groupBy(specs, (s) => s.group);
 const cards = [...groups].map(([group, list]) => `<h2>${esc(group)}</h2><div class="grid">${list.map((s) => `
-  <figure><video src="${s.name}.mp4" poster="${s.name}.jpg" controls muted preload="none"></video>
-  <figcaption><b>${esc(s.demo.title)}</b><span>${esc(s.demo.summary)}</span><code>${s.name}.mp4</code></figcaption></figure>`).join('')}</div>`).join('');
+  <figure><video src="${esc(s.video)}" poster="${esc(s.poster)}" controls muted preload="none"></video>
+  <figcaption><b>${esc(s.title)}</b><span>${esc(s.summary)}</span><code>${esc(s.video)}</code></figcaption></figure>`).join('')}</div>`).join('');
 writeFileSync(join(out, 'index.html'), `<!doctype html><meta charset="utf-8"><title>Almis Hotel demos</title>
 <style>body{font-family:system-ui,sans-serif;margin:32px;background:#f8fafc;color:#0f172a}h2{text-transform:capitalize;margin-top:36px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:20px}figure{margin:0;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px #0002}
