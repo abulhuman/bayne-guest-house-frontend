@@ -76,6 +76,18 @@ def preview_environment(path, hostname):
     return values
 
 
+def tutorial_paths(pr_number):
+    root = Path(os.environ.get('ALMIS_TUTORIALS_ROOT', Path.home() / '.local/share/almis/tutorials')).expanduser()
+    main = root / 'main'
+    preview = root / f'pr-{pr_number}'
+    main.mkdir(parents=True, exist_ok=True, mode=0o700)
+    selected = preview if preview.is_dir() else main
+    key = Path(os.environ.get('ALMIS_TUTORIALS_SIGNING_KEY', Path.home() / '.local/share/almis/deploy/cloudflared/tutorials-signing-key')).expanduser()
+    if not key.is_file():
+        raise RuntimeError(f'tutorial signing key is missing: {key}')
+    return selected, key
+
+
 def bootstrap_preview_admin(compose, environment, path):
     credentials = read_env(path)
     credentials.setdefault('ADMIN_EMAIL', 'admin@preview.invalid')
@@ -151,8 +163,10 @@ def main():
                 print(f'Preview {args.pr} already absent.')
                 return
             preview_environment(env_file, hostname)
+            tutorial_dir, tutorial_key = tutorial_paths(args.pr)
             environment.update(PR_NUMBER=str(args.pr), PREVIEW_HOST=hostname,
-                               PREVIEW_ENV_FILE=str(env_file))
+                               PREVIEW_ENV_FILE=str(env_file), TUTORIALS_HOST_DIR=str(tutorial_dir),
+                               TUTORIALS_SIGNING_KEY_FILE=str(tutorial_key))
             compose = ['docker', 'compose', '--project-directory', str(root),
                        '--env-file', str(root / 'deploy.env'), '--env-file', str(env_file),
                        '-p', f'bayne-fe-pr-{args.pr}', '-f', str(root / 'compose.preview.yml')]
