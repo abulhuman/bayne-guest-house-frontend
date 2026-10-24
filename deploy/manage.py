@@ -76,16 +76,20 @@ def preview_environment(path, hostname):
     return values
 
 
-def tutorial_paths(pr_number):
+def tutorial_paths(pr_number, preview_root):
     root = Path(os.environ.get('ALMIS_TUTORIALS_ROOT', Path.home() / '.local/share/almis/tutorials')).expanduser()
     main = root / 'main'
     preview = root / f'pr-{pr_number}'
     main.mkdir(parents=True, exist_ok=True, mode=0o700)
-    selected = preview if preview.is_dir() else main
-    key = Path(os.environ.get('ALMIS_TUTORIALS_SIGNING_KEY', Path.home() / '.local/share/almis/deploy/cloudflared/tutorials-signing-key')).expanduser()
-    if not key.is_file():
-        raise RuntimeError(f'tutorial signing key is missing: {key}')
-    return selected, key
+    # The API signs and checks its own media URLs, so a preview never needs the production key.
+    key = preview_root / 'tutorials-signing-key'
+    preview_root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if not key.exists():
+        temporary = key.with_suffix('.tmp')
+        temporary.write_text(secrets.token_urlsafe(48) + '\n')
+        os.chmod(temporary, 0o600)
+        temporary.replace(key)
+    return (preview if preview.is_dir() else main), key
 
 
 def bootstrap_preview_admin(compose, environment, path):
@@ -163,7 +167,7 @@ def main():
                 print(f'Preview {args.pr} already absent.')
                 return
             preview_environment(env_file, hostname)
-            tutorial_dir, tutorial_key = tutorial_paths(args.pr)
+            tutorial_dir, tutorial_key = tutorial_paths(args.pr, preview_root)
             environment.update(PR_NUMBER=str(args.pr), PREVIEW_HOST=hostname,
                                PREVIEW_ENV_FILE=str(env_file), TUTORIALS_HOST_DIR=str(tutorial_dir),
                                TUTORIALS_SIGNING_KEY_FILE=str(tutorial_key))
