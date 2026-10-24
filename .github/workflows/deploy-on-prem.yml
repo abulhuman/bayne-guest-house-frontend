@@ -1,7 +1,10 @@
 name: Deploy on-prem
 on:
+  # Merging to main builds and tests. Production deploys a v* release tag.
+  # Re-run on an older tag to roll back: gh workflow run "Deploy on-prem" --ref v1.2.3
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, closed]
@@ -42,6 +45,7 @@ jobs:
 
   deploy:
     needs: build
+    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
     runs-on: [self-hosted, linux, x64, bayne-frontend]
     timeout-minutes: 20
     permissions:
@@ -49,7 +53,7 @@ jobs:
       actions: read
       pull-requests: write
     concurrency:
-      group: bayne-frontend-${{ github.event.pull_request.number || 'main' }}
+      group: bayne-frontend-${{ github.event.pull_request.number || 'production' }}
       cancel-in-progress: false
     steps:
       - name: Ignore obsolete deployments
@@ -61,17 +65,22 @@ jobs:
               const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: context.issue.number});
               core.setOutput('deploy', pr.state === 'open' && pr.head.sha === context.payload.pull_request.head.sha);
             } else {
-              const {data: ref} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
-              core.setOutput('deploy', ref.object.sha === context.sha);
+              // A release must be a commit that main already contains.
+              const {data: diff} = await github.rest.repos.compareCommits({...context.repo, base: 'main', head: context.sha});
+              if (!['identical', 'behind'].includes(diff.status)) {
+                core.setFailed(`${context.ref} points at ${context.sha}, which is not on main.`);
+                return;
+              }
+              core.setOutput('deploy', true);
             }
-      # Only main may update the host deployment script. PR jobs never check out
+      # Only a release may update the host deployment script. PR jobs never check out
       # or execute PR shell/Python code on this persistent runner.
       - uses: actions/checkout@v4
         if: steps.current.outputs.deploy == 'true' && github.event_name != 'pull_request'
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Install deployment scripts from main
+      - name: Install deployment scripts from the release
         if: steps.current.outputs.deploy == 'true' && github.event_name != 'pull_request'
         run: python3 deploy/manage.py prepare
       - uses: actions/download-artifact@v4
