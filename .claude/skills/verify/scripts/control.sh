@@ -68,7 +68,7 @@ cors_ok() {
 
 cmd_up() {
   if [[ -f "$STATE" ]]; then
-    if cmd_doctor >/dev/null; then load_state; echo "READY web=$WEB_URL api=$API_URL rev=$GIT_REV evidence=$EVIDENCE_DIR"; return 0; fi
+    if cmd_doctor >/dev/null && backend doctor | grep "^OK names=$([[ ${DEMO_NAMES:-0} == 1 ]] && echo demo || echo verify)$" >/dev/null; then load_state; echo "READY web=$WEB_URL api=$API_URL rev=$GIT_REV evidence=$EVIDENCE_DIR"; return 0; fi
     cmd_down >/dev/null
   fi
   [[ -x "$BACKEND_CTL" ]] || die "backend-missing want=$BACKEND_CTL (set BACKEND_DIR)"
@@ -163,21 +163,26 @@ cmd_suite() {
 }
 
 cmd_demo() {
+  export DEMO_NAMES=1
   local filter="${1:-}" f name out pass=0 fail=0
-  load_state
   command -v ffmpeg >/dev/null || die "no-ffmpeg install ffmpeg"
+  command -v python3 >/dev/null || die "no-python3 install python3"
+  command -v fc-match >/dev/null || die "no-fontconfig install fontconfig"
+  cmd_up || return 1
+  load_state
   mkdir -p "$DEMO_DIR"
   for f in "$DEMOS"/*.json; do
     name="$(basename "$f" .json)"
     [[ -n "$filter" && "$name" != $filter ]] && continue
-    out="$(DEMO_OUT="$DEMO_DIR/$name.webm" cmd_drive "$f")"
+    out="$(DEMO_OUT="$DEMO_DIR/$name.src.mkv" cmd_drive "$f")"
+    grep '^CAPTURE ' <<<"$out"
     if grep -qx 'RESULT PASS' <<<"$out" &&
-      ffmpeg -loglevel error -y -i "$DEMO_DIR/$name.webm" -an -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -movflags +faststart "$DEMO_DIR/$name.mp4" &&
-      ffmpeg -loglevel error -y -sseof -1 -i "$DEMO_DIR/$name.mp4" -frames:v 1 -vf scale=640:-2 "$DEMO_DIR/$name.jpg"; then
-      rm -f "$DEMO_DIR/$name.webm"
+      python3 "$ROOT/.claude/skills/verify/scripts/demo-render.py" "$DEMO_DIR/$name.src.mkv" "$DEMO_DIR/$name.events.json" "$DEMO_DIR/$name.mp4" --width "${DEMO_WIDTH:-1920}" ${DEMO_NO_ZOOM:+--no-zoom} &&
+      ffmpeg -loglevel error -y -i "$DEMO_DIR/$name.poster.png" -frames:v 1 -vf scale=640:-2 "$DEMO_DIR/$name.jpg"; then
+      rm -f "$DEMO_DIR/$name.poster.png"
       pass=$((pass+1)); echo "DEMO PASS $name $DEMO_DIR/$name.mp4"
     else
-      rm -f "$DEMO_DIR/$name.webm"
+      rm -f "$DEMO_DIR/$name.mp4" "$DEMO_DIR/$name.jpg" "$DEMO_DIR/$name.poster.png"
       fail=$((fail+1)); echo "DEMO FAIL $name $(grep -E '^EVIDENCE ' <<<"$out" | cut -d' ' -f2)"
       grep -E '^(STEP [0-9]+ FAIL|SETUP FAIL|RESULT) ' <<<"$out" | sed 's/^/  /'
     fi

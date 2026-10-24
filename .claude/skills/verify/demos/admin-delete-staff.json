@@ -7,19 +7,20 @@
     "summary": "The admin deletes a barista who left the hotel, along with her login account."
   },
   "setup": [
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Fikru Assefa", "role": "store", "phone": "0916789012" }, "expect": 201 },
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Kidist Mulugeta", "role": "barista", "phone": "0917890123" }, "expect": 201, "save": "STAFF" },
-    { "as": "admin", "method": "POST", "path": "/users/staff/${STAFF}", "body": { "email": "kidist.${RUN}@almis.et", "password": "Barista#2026", "role": "barista" }, "expect": 201 }
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Abdi Hassan", "role": "store", "phone": "0916789012" }, "expect": 201 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Asha Mohamed", "role": "barista", "phone": "0917890123" }, "expect": 201, "save": "STAFF" },
+    { "as": "admin", "method": "POST", "path": "/users/staff/${STAFF}", "body": { "email": "asha.${RUN}@almis.et", "password": "Barista#2026", "role": "barista" }, "expect": 201 }
   ],
   "steps": [
     { "goto": "/staff" },
-    { "caption": "Kidist Mulugeta has left the hotel. Remove her record." },
-    { "click": "tr:has-text('Kidist Mulugeta') >> role=button[name='Delete']" },
+    { "caption": "Asha Mohamed has left the hotel. Remove her record." },
+    { "click": "tr:has-text('Asha Mohamed') >> role=button[name='Delete']" },
     { "expectVisible": { "role": "dialog", "name": "Confirm Deletion" } },
+    { "poster": true },
     { "caption": "The app asks first, because this also deletes her login." },
     { "click": { "role": "button", "name": "Delete" } },
     { "expectApi": "DELETE /staff/${STAFF} 200" },
-    { "expectNoText": "Kidist Mulugeta" },
+    { "expectNoText": "Asha Mohamed" },
     { "click": "th:has-text('Name')" },
     { "caption": "She is gone from the list and can no longer sign in." },
     { "apiCheck": { "as": "admin", "path": "/staff", "jq": "all(.[]; .id != ${STAFF})" } }

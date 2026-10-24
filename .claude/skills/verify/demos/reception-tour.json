@@ -8,7 +8,11 @@
     "summary": "Reception signs in and sees 8 pages: Dashboard, Bookings, Laundry, Attendance, Payments, Inventory, Rooms, Guests."
   },
   "setup": [
-    { "as": "reception", "method": "GET", "path": "/auth/me", "expect": 200 }
+    { "as": "reception", "method": "GET", "path": "/auth/me", "expect": 200 },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Amina Warsame", "phone": "0912884411" }, "expect": 201, "save": "GUEST" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "680", "type": "Single", "price": 1200 }, "expect": 201, "save": "ROOM" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST}", "roomId": "${ROOM}", "checkIn": "${DATE+0}", "checkOut": "${DATE+1}" }, "expect": 201, "save": "BOOKING" },
+    { "as": "reception", "method": "POST", "path": "/payments", "body": { "bookingId": "${BOOKING}", "method": "cash", "status": "paid" }, "expect": 201 }
   ],
   "steps": [
     { "goto": "/login" },
@@ -30,7 +34,11 @@
     { "caption": "Attendance. Staff hours worked." },
     { "click": "aside nav a:text-is('Payments')" },
     { "expectUrl": "/payments" },
+    { "expectVisible": { "role": "heading", "name": "Payments" } },
+    { "fill": { "placeholder": "Search…" }, "value": "Amina Warsame" },
+    { "expectVisible": "tr:has-text('Amina Warsame')" },
     { "caption": "Payments. Record payments, see unpaid stays." },
+    { "poster": true },
     { "click": "aside nav a:text-is('Inventory')" },
     { "expectUrl": "/inventory" },
     { "caption": "Inventory. Stock levels and changes." },

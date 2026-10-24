@@ -7,21 +7,22 @@
     "summary": "Reception changes a returning guest's phone number on their profile."
   },
   "setup": [
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Kidist Ayele", "phone": "0914556677", "email": "kidist.${RUN}@example.com" }, "expect": 201, "save": "G" }
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Fadumo Yusuf", "phone": "0914556677", "email": "fadumo.${RUN}@example.com" }, "expect": 201, "save": "G" }
   ],
   "steps": [
     { "goto": "/guests" },
-    { "caption": "Kidist has a new phone number. Search for her, then click Edit." },
-    { "fill": { "placeholder": "Search guests…" }, "value": "Kidist" },
-    { "click": "tr:has-text('kidist.${RUN}@example.com') >> role=button[name='Edit']" },
+    { "caption": "Fadumo has a new phone number. Search for her, then click Edit." },
+    { "fill": { "placeholder": "Search guests…" }, "value": "Fadumo" },
+    { "click": "tr:has-text('fadumo.${RUN}@example.com') >> role=button[name='Edit']" },
     { "expectText": "Edit Guest" },
     { "expectValue": { "label": "Phone" }, "value": "0914556677" },
     { "caption": "Replace the old number and save." },
     { "fill": { "label": "Phone" }, "value": "0914998877" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Save changes" } },
     { "expectApi": "PATCH /guests/${G} 200" },
     { "expectText": "0914998877" },
     { "caption": "The list shows the new number." },
-    { "apiCheck": { "as": "reception", "path": "/guests/${G}", "jq": ".phone == \"0914998877\" and .name == \"Kidist Ayele\"" } }
+    { "apiCheck": { "as": "reception", "path": "/guests/${G}", "jq": ".phone == \"0914998877\" and .name == \"Fadumo Yusuf\"" } }
   ]
 }

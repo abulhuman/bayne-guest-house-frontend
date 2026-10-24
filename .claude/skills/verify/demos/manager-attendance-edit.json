@@ -7,28 +7,29 @@
     "summary": "The manager corrects a shift that was logged with the wrong times, and the form refuses a check-out before the check-in."
   },
   "setup": [
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Genet Mulugeta", "role": "housekeeping", "phone": "0912775306" }, "expect": 201, "save": "STAFF" },
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Solomon Desta", "role": "security", "phone": "0938209154" }, "expect": 201, "save": "STAFF2" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Rahma Yusuf", "role": "housekeeping", "phone": "0912775306" }, "expect": 201, "save": "STAFF" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Ismail Hassan", "role": "security", "phone": "0938209154" }, "expect": 201, "save": "STAFF2" },
     { "as": "manager", "method": "POST", "path": "/attendance", "body": { "staffId": "${STAFF2}", "date": "${DATE+0}", "checkIn": "${DATE+0}T03:00:00Z", "checkOut": "${DATE+0}T15:00:00Z" }, "expect": 201 },
     { "as": "manager", "method": "POST", "path": "/attendance", "body": { "staffId": "${STAFF}", "date": "${DATE+0}", "checkIn": "${DATE+0}T09:00:00Z", "checkOut": "${DATE+0}T10:00:00Z" }, "expect": 201, "save": "ATT" }
   ],
   "steps": [
     { "goto": "/attendance" },
-    { "caption": "Genet's shift shows only one hour. The times were typed wrong." },
-    { "fill": { "placeholder": "Search by staff, role, date…" }, "value": "Genet Mulugeta" },
-    { "click": "tr:has-text('Genet Mulugeta') >> nth=-1 >> role=button[name='Edit']" },
+    { "caption": "Rahma's shift shows only one hour. The times were typed wrong." },
+    { "fill": { "placeholder": "Search by staff, role, date…" }, "value": "Rahma Yusuf" },
+    { "click": "tr:has-text('Rahma Yusuf') >> nth=-1 >> role=button[name='Edit']" },
     { "caption": "She started at 7 AM. Fix the check-in." },
     { "fill": { "label": "Check-in" }, "value": "${DATE+0}T07:00" },
     { "fill": { "label": "Check-out" }, "value": "${DATE+0}T06:00" },
     { "click": { "role": "button", "name": "Save" } },
     { "expectText": "Check-out must be after check-in" },
     { "expectNoApi": "PATCH /attendance" },
+    { "poster": true },
     { "caption": "A check-out before the check-in is refused. She left at 3 PM." },
     { "fill": { "label": "Check-out" }, "value": "${DATE+0}T15:00" },
     { "click": { "role": "button", "name": "Save" } },
     { "expectApi": "PATCH /attendance/${ATT} 200" },
     { "expectHidden": { "role": "dialog" } },
-    { "expectVisible": "tr:has-text('Genet Mulugeta'):has-text('8.00') >> nth=-1" },
+    { "expectVisible": "tr:has-text('Rahma Yusuf'):has-text('8.00') >> nth=-1" },
     { "caption": "The shift now shows the right 8 hours." },
     { "apiCheck": { "as": "manager", "path": "/attendance/${ATT}", "jq": "(.checkIn | startswith(\"${DATE+0}T04:00:00\")) and (.checkOut | startswith(\"${DATE+0}T12:00:00\"))" } }
   ]

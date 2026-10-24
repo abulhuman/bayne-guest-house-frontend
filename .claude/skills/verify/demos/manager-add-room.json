@@ -14,6 +14,9 @@
     { "goto": "/rooms" },
     { "caption": "The Rooms page lists every room with its nightly price." },
     { "click": { "role": "button", "name": "Add Room" } },
+    { "click": { "role": "button", "name": "Add Room" } },
+    { "expectText": "Room number is required" },
+    { "poster": true },
     { "caption": "Enter the room number, type and price in birr." },
     { "fill": { "label": "Number" }, "value": "503" },
     { "fill": { "label": "Type" }, "value": "Suite" },
@@ -22,6 +25,8 @@
     { "expectApi": "POST /rooms 201" },
     { "expectHidden": { "role": "dialog", "name": "Add Room" } },
     { "expectText": "ETB\u00a03,500.00" },
+    { "fill": { "placeholder": "Search…" }, "value": "503" },
+    { "expectVisible": "tr:has-text('503'):has-text('ETB\u00a03,500.00')" },
     { "caption": "Room 503 is in the list and ready to book." },
     { "apiCheck": { "as": "manager", "path": "/rooms", "jq": "any(.[]; .number == \"503\" and .type == \"Suite\" and .price == 3500)" } }
   ]

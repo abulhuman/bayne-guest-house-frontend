@@ -8,7 +8,8 @@
     "summary": "Admin signs in and sees 9 pages: Dashboard, Bookings, Laundry, Attendance, Payments, Inventory, Rooms, Staff, Guests."
   },
   "setup": [
-    { "as": "admin", "method": "GET", "path": "/auth/me", "expect": 200 }
+    { "as": "admin", "method": "GET", "path": "/auth/me", "expect": 200 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Maryan Ibrahim", "role": "reception", "phone": "0912406812" }, "expect": 201 }
   ],
   "steps": [
     { "goto": "/login" },
@@ -39,7 +40,12 @@
     { "caption": "Rooms. Numbers, types and prices." },
     { "click": "aside nav a:text-is('Staff')" },
     { "expectUrl": "/staff" },
-    { "caption": "Staff. Staff records and logins." },
+    { "fill": { "placeholder": "Search name, role, phone, barcode, email…" }, "value": "Maryan Ibrahim" },
+    { "expectVisible": "tr:has-text('Maryan Ibrahim')" },
+    { "click": "tr:has-text('Maryan Ibrahim') >> input[type='checkbox']" },
+    { "expectText": "Print selected (1)" },
+    { "caption": "Filter and select a staff record to enable ID-card printing." },
+    { "poster": true },
     { "click": "aside nav a:text-is('Guests')" },
     { "expectUrl": "/guests" },
     { "caption": "Guests. Guest profiles." },

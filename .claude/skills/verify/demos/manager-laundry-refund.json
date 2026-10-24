@@ -7,8 +7,8 @@
     "summary": "The manager refunds a guest's laundry payment after a complaint, with a confirmation step so nobody refunds by accident."
   },
   "setup": [
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Eyerusalem Tefera", "phone": "0911587204" }, "expect": 201, "save": "GUEST" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Natnael Bekele", "phone": "0935640177" }, "expect": 201, "save": "OTHER" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Zaynab Ali", "phone": "0911587204" }, "expect": 201, "save": "GUEST" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Abdullahi Ahmed", "phone": "0935640177" }, "expect": 201, "save": "OTHER" },
     { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${OTHER}", "items": "2 Shirts", "price": 90 }, "expect": 201 },
     { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "1 Silk scarf, 1 Blouse", "price": 240 }, "expect": 201, "save": "LID" },
     { "as": "manager", "method": "GET", "path": "/payments", "expect": 200, "pick": "[.[] | select(.laundryId == ${LID})][0].id", "save": "PAY" }
@@ -16,7 +16,7 @@
   "steps": [
     { "goto": "/laundry" },
     { "caption": "A guest says her silk scarf came back damaged. Find her order." },
-    { "fill": { "placeholder": "Search by guest, items, status…" }, "value": "Eyerusalem" },
+    { "fill": { "placeholder": "Search by guest, items, status…" }, "value": "Zaynab" },
     { "expectVisible": "tr:has-text('1 Silk scarf, 1 Blouse') >> nth=0" },
     { "caption": "Paid orders have a Refund button." },
     { "click": "tr:has-text('1 Silk scarf, 1 Blouse') >> nth=0 >> role=button[name='Refund']" },
@@ -26,6 +26,9 @@
     { "expectApi": "PATCH /payments/${PAY} 200" },
     { "expectText": "Payment refunded" },
     { "expectHidden": "tr:has-text('1 Silk scarf, 1 Blouse') >> nth=0 >> role=button[name='Refund']" },
+    { "fill": { "placeholder": "Search by guest, items, status…" }, "value": "" },
+    { "expectVisible": "tr:has-text('2 Shirts')" },
+    { "poster": true },
     { "caption": "The 240 birr is marked refunded and the button is gone." },
     { "apiCheck": { "as": "manager", "path": "/payments", "jq": "any(.[]; .laundryId == ${LID} and .status == \"refunded\")" } }
   ]

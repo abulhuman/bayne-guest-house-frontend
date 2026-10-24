@@ -7,24 +7,25 @@
     "summary": "The manager adds the end of shift for a staff member who checked in this morning, so the day's hours add up."
   },
   "setup": [
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Abebe Kebede", "role": "reception", "phone": "0911340987" }, "expect": 201, "save": "STAFF" },
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Almaz Tadesse", "role": "housekeeping", "phone": "0924118835" }, "expect": 201, "save": "STAFF2" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Abdirahman Mohamed", "role": "reception", "phone": "0911340987" }, "expect": 201, "save": "STAFF" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Halima Ahmed", "role": "housekeeping", "phone": "0924118835" }, "expect": 201, "save": "STAFF2" },
     { "as": "manager", "method": "POST", "path": "/attendance", "body": { "staffId": "${STAFF2}", "date": "${DATE+0}", "checkIn": "${DATE+0}T04:00:00Z", "checkOut": "${DATE+0}T12:00:00Z" }, "expect": 201 },
     { "as": "manager", "method": "POST", "path": "/attendance", "body": { "staffId": "${STAFF}", "date": "${DATE+0}", "checkIn": "${DATE+0}T05:30:00Z" }, "expect": 201, "save": "ATT" }
   ],
   "steps": [
     { "goto": "/attendance" },
     { "caption": "Attendance lists each staff member's shift. Find today's open shift." },
-    { "fill": { "placeholder": "Search by staff, role, date…" }, "value": "Abebe Kebede" },
-    { "expectVisible": "tr:has-text('Abebe Kebede') >> nth=-1" },
-    { "caption": "Abebe checked in at 8:30 and has no check-out yet." },
-    { "click": "tr:has-text('Abebe Kebede') >> nth=-1 >> role=button[name='Edit']" },
+    { "fill": { "placeholder": "Search by staff, role, date…" }, "value": "Abdirahman Mohamed" },
+    { "expectVisible": "tr:has-text('Abdirahman Mohamed') >> nth=-1" },
+    { "caption": "Abdirahman checked in at 8:30 and has no check-out yet." },
+    { "click": "tr:has-text('Abdirahman Mohamed') >> nth=-1 >> role=button[name='Edit']" },
     { "caption": "Enter the time he left, 5 PM." },
     { "fill": { "label": "Check-out" }, "value": "${DATE+0}T17:00" },
     { "click": { "role": "button", "name": "Save" } },
     { "expectApi": "PATCH /attendance/${ATT} 200" },
     { "expectHidden": { "role": "dialog" } },
-    { "expectVisible": "tr:has-text('Abebe Kebede'):has-text('8.50') >> nth=-1" },
+    { "expectVisible": "tr:has-text('Abdirahman Mohamed'):has-text('8.50') >> nth=-1" },
+    { "poster": true },
     { "caption": "The shift now shows 8.5 hours worked." },
     { "apiCheck": { "as": "manager", "path": "/attendance/${ATT}", "jq": ".checkOut | startswith(\"${DATE+0}T14:00:00\")" } }
   ]

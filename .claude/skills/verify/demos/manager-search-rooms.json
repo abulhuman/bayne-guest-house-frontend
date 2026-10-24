@@ -17,6 +17,7 @@
     { "fill": { "placeholder": "Search…" }, "value": "suite" },
     { "expectText": "ETB\u00a04,000.00" },
     { "expectNoText": "Single" },
+    { "poster": true },
     { "caption": "Only the suites remain, 520 and 522 among them." },
     { "expectApi": "GET /rooms 200" },
     { "caption": "Search by number too. Type 52 to find the 520s." },

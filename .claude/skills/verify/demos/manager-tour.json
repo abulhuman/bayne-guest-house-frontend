@@ -8,7 +8,13 @@
     "summary": "Manager signs in and sees 9 pages: Dashboard, Bookings, Laundry, Attendance, Payments, Inventory, Rooms, Staff, Guests."
   },
   "setup": [
-    { "as": "manager", "method": "GET", "path": "/auth/me", "expect": 200 }
+    { "as": "manager", "method": "GET", "path": "/auth/me", "expect": 200 },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Khadra Hassan", "phone": "0912774601" }, "expect": 201, "save": "GUEST" },
+    { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "3 Cotton towels", "price": 75 }, "expect": 201 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Nimco Yusuf", "role": "housekeeping", "phone": "0912887744" }, "expect": 201, "save": "STAFF" },
+    { "as": "manager", "method": "POST", "path": "/attendance", "body": { "staffId": "${STAFF}", "date": "${DATE+0}", "checkIn": "${DATE+0}T05:00:00Z", "checkOut": "${DATE+0}T13:00:00Z" }, "expect": 201 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Sahra Ali", "role": "housekeeping", "phone": "0912887755" }, "expect": 201, "save": "STAFF2" },
+    { "as": "manager", "method": "POST", "path": "/attendance", "body": { "staffId": "${STAFF2}", "date": "${DATE+0}", "checkIn": "${DATE+0}T06:00:00Z", "checkOut": "${DATE+0}T14:00:00Z" }, "expect": 201 }
   ],
   "steps": [
     { "goto": "/login" },
@@ -24,10 +30,16 @@
     { "caption": "Bookings. Every guest stay." },
     { "click": "aside nav a:text-is('Laundry')" },
     { "expectUrl": "/laundry" },
-    { "caption": "Laundry. Guest laundry orders." },
+    { "fill": { "placeholder": "Search by guest, items, status…" }, "value": "3 Cotton towels" },
+    { "expectVisible": "tr:has-text('3 Cotton towels')" },
+    { "caption": "Filter laundry by item to find a guest order." },
     { "click": "aside nav a:text-is('Attendance')" },
     { "expectUrl": "/attendance" },
+    { "fill": { "placeholder": "Search by staff, role, date…" }, "value": "housekeeping" },
+    { "expectVisible": "tr:has-text('Nimco Yusuf')" },
+    { "expectVisible": "tr:has-text('Sahra Ali')" },
     { "caption": "Attendance. Staff hours worked." },
+    { "poster": true },
     { "click": "aside nav a:text-is('Payments')" },
     { "expectUrl": "/payments" },
     { "caption": "Payments. Record payments, see unpaid stays." },

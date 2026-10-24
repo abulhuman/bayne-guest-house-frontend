@@ -19,6 +19,7 @@
     { "expectApi": "POST /auth/login 201" },
     { "expectUrl": "/laundry" },
     { "caption": "Housekeeping lands on Laundry. Guest laundry orders." },
+    { "poster": true },
     { "click": { "role": "button", "name": "Logout" } },
     { "expectUrl": "/login" }
   ]

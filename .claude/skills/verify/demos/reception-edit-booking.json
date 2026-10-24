@@ -9,14 +9,15 @@
   "setup": [
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "112", "type": "single", "price": 1200 }, "expect": 201, "save": "R1" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "113", "type": "double", "price": 1800 }, "expect": 201, "save": "R2" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Meron Haile", "phone": "0913667788" }, "expect": 201, "save": "G" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Safiya Hassan", "phone": "0913667788" }, "expect": 201, "save": "G" },
     { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${G}", "roomId": "${R1}", "checkIn": "${DATE+5}", "checkOut": "${DATE+7}" }, "expect": 201, "save": "BK" }
   ],
   "steps": [
     { "goto": "/bookings" },
-    { "caption": "Meron called to stay one more night and wants a double room." },
+    { "caption": "Safiya called to stay one more night and wants a double room." },
     { "click": "tr:has-text('112 — single') >> role=button[name='Edit']" },
     { "expectText": "Edit Booking" },
+    { "poster": true },
     { "caption": "Move the check-out one day later." },
     { "fill": { "label": "Check-out" }, "value": "${DATE+8}" },
     { "caption": "Pick a room that is free for the new dates." },

@@ -7,9 +7,9 @@
     "summary": "Finance searches the payments for refunds, then checks which bookings are still unpaid and how much each one owes."
   },
   "setup": [
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Saron Alemayehu", "phone": "0911067348" }, "expect": 201, "save": "GUEST1" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Daniel Mekonnen", "phone": "0925893164" }, "expect": 201, "save": "GUEST2" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Mahlet Tesfaye", "phone": "0936240715" }, "expect": 201, "save": "GUEST3" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Sahra Yusuf", "phone": "0911067348" }, "expect": 201, "save": "GUEST1" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Ahmed Osman", "phone": "0925893164" }, "expect": 201, "save": "GUEST2" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Khadija Hassan", "phone": "0936240715" }, "expect": 201, "save": "GUEST3" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "391", "type": "double", "price": 1750 }, "expect": 201, "save": "ROOM1" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "392", "type": "single", "price": 1150 }, "expect": 201, "save": "ROOM2" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "393", "type": "suite", "price": 3400 }, "expect": 201, "save": "ROOM3" },
@@ -25,14 +25,14 @@
     { "caption": "Finance sees every payment with its guest, room, method and status." },
     { "caption": "Search for refunds to check each one has a reason." },
     { "fill": { "placeholder": "Search…" }, "value": "refunded" },
-    { "expectVisible": "tr:has-text('Daniel Mekonnen'):has-text('Cancelled two days ahead') >> nth=0" },
+    { "expectVisible": "tr:has-text('Ahmed Osman'):has-text('Cancelled two days ahead') >> nth=0" },
     { "expectHidden": "tr:has-text('#${BOOKING1}')" },
-    { "caption": "Daniel's refund has its reason. Now check what is still owed." },
+    { "caption": "Ahmed's refund has its reason. Now check what is still owed." },
     { "click": { "role": "button", "name": "Unpaid Bookings" } },
     { "expectApi": "GET /bookings 200" },
     { "expectVisible": "tr:has-text('#${BOOKING3}'):has-text('2 × ETB\u00a03,400.00 = ETB\u00a06,800.00')" },
-    { "caption": "Mahlet's suite stay of 6,800 birr is not paid yet." },
-    { "expectVisible": "tr:has-text('#${BOOKING2}'):has-text('Daniel Mekonnen')" },
+    { "caption": "Khadija's suite stay of 6,800 birr is not paid yet." },
+    { "expectVisible": "tr:has-text('#${BOOKING2}'):has-text('Ahmed Osman')" },
     { "caption": "A refunded booking counts as unpaid again." },
     { "apiCheck": { "as": "finance", "path": "/bookings?unpaid=true", "jq": "any(.[]; .id == ${BOOKING3}) and all(.[]; .id != ${BOOKING1})" } }
   ]

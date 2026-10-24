@@ -19,6 +19,7 @@
     { "expectApi": "POST /auth/login 201" },
     { "expectUrl": "/inventory" },
     { "caption": "Store lands on Inventory. Stock levels and changes." },
+    { "poster": true },
     { "click": { "role": "button", "name": "Logout" } },
     { "expectUrl": "/login" }
   ]

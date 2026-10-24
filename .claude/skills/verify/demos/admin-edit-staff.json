@@ -7,17 +7,18 @@
     "summary": "The admin moves a housekeeper to reception and updates her phone number."
   },
   "setup": [
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Yonas Bekele", "role": "security", "phone": "0914567890" }, "expect": 201 },
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Selam Tadesse", "role": "housekeeping", "phone": "0915678901" }, "expect": 201, "save": "STAFF" }
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Yusuf Ahmed", "role": "security", "phone": "0914567890" }, "expect": 201 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Zahra Ali", "role": "housekeeping", "phone": "0915678901" }, "expect": 201, "save": "STAFF" }
   ],
   "steps": [
     { "goto": "/staff" },
-    { "caption": "Selam Tadesse is moving from housekeeping to reception." },
-    { "click": "tr:has-text('Selam Tadesse') >> role=button[name='Edit']" },
-    { "expectValue": { "label": "Full name" }, "value": "Selam Tadesse" },
+    { "caption": "Zahra Ali is moving from housekeeping to reception." },
+    { "click": "tr:has-text('Zahra Ali') >> role=button[name='Edit']" },
+    { "expectValue": { "label": "Full name" }, "value": "Zahra Ali" },
     { "caption": "Change her role and phone, then save." },
     { "select": { "label": "Role" }, "value": "reception" },
     { "fill": { "label": "Phone" }, "value": "0935112233" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Save Changes" } },
     { "expectApi": "PUT /staff/${STAFF} 200" },
     { "expectText": "0935112233" },

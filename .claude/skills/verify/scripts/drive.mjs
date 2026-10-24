@@ -1,11 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
 const { chromium } = createRequire(process.env.NODE_PATH + '/')('playwright-core');
 const { WEB_URL, API_URL, CHROME, EVIDENCE_DIR, CONTROL, DEMO_OUT } = process.env;
 const STEP_TIMEOUT = 10_000;
+const RECORDING = Boolean(DEMO_OUT);
 
 const arg = process.argv[2];
 const spec = JSON.parse(arg.trim().startsWith('{') ? arg : readFileSync(arg, 'utf8'));
@@ -30,6 +31,14 @@ const jq = (filter, input) => execFileSync('jq', ['-e', filter], { input, encodi
 
 const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], visits: [], api: [], requests: [], console: [], pageErrors: [] };
 let failed = null;
+const events = [];
+let capture = null;
+let activeCaption = '';
+const ev = (type, extra = {}) => {
+  const event = { t: Date.now() - (capture?.excludedMs ?? 0), type, box: null, caption: activeCaption, ...extra };
+  events.push(event);
+  return event;
+};
 
 function finish(browserClose) {
   const result = failed ? (spec.knownBug ? 'XFAIL' : 'FAIL') : (spec.knownBug ? 'XPASS' : 'PASS');
@@ -66,10 +75,17 @@ const role = report.role;
 const token = role === 'anon' ? null : control('api', 'token', role);
 const VIEWPORTS = { desktop: { width: 1280, height: 800 }, tablet: { width: 768, height: 1024 }, phone: { width: 390, height: 844 } };
 if (!VIEWPORTS[report.viewport]) throw new Error(`viewport must be one of ${Object.keys(VIEWPORTS).join(', ')}`);
-const browser = await chromium.launch({ executablePath: CHROME });
+const browser = await chromium.launch({ executablePath: CHROME, ...(RECORDING && { args: ['--force-device-scale-factor=2'] }) });
 const viewport = VIEWPORTS[report.viewport];
-const ctx = await browser.newContext({ viewport, ...(DEMO_OUT && { recordVideo: { dir: join(dir, 'video'), size: viewport } }) });
-if (DEMO_OUT) await ctx.addInitScript(demoOverlay);
+const ctx = await browser.newContext({ viewport, ...(RECORDING && { deviceScaleFactor: 2 }) });
+if (RECORDING) {
+  await ctx.exposeBinding('__demoDialog', (_, box) => {
+    if (!capture) return;
+    if (capture.paused) capture.pendingDialog = box;
+    else ev('dialog', { box });
+  });
+  await ctx.addInitScript(demoOverlay);
+}
 await ctx.addInitScript((t) => {
   // Init scripts also run in subframes such as the PDF viewer, where sessionStorage is null.
   if (window !== window.top || sessionStorage.getItem('verify-seeded')) return;
@@ -79,7 +95,8 @@ await ctx.addInitScript((t) => {
 const page = await ctx.newPage();
 page.setDefaultTimeout(STEP_TIMEOUT);
 
-// Headless Chromium draws no cursor and the video has no sound, so demo mode paints both the pointer and a caption strip.
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+
 function demoOverlay() {
   if (window !== window.top) return;
   let store;
@@ -87,43 +104,155 @@ function demoOverlay() {
   const draw = () => {
     if (!document.body || document.getElementById('demo-cursor')) return;
     const style = document.createElement('style');
-    style.textContent = 'nextjs-portal{display:none!important}';
+    style.textContent = `nextjs-portal{display:none!important}
+#demo-cursor{position:fixed;left:0;top:0;width:26px;height:26px;z-index:2147483647;pointer-events:none;will-change:transform;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+#demo-cursor svg{transition:transform .12s;transform-origin:3px 3px}
+#demo-cursor.down svg{transform:scale(.82)}
+.demo-ripple{position:fixed;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;border:3px solid rgba(13,148,136,.9);z-index:2147483645;pointer-events:none;animation:demo-ripple .5s ease-out forwards}
+@keyframes demo-ripple{from{transform:scale(.2);opacity:1}to{transform:scale(1.2);opacity:0}}
+#demo-key{position:fixed;padding:4px 10px;border-radius:7px;background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-bottom-width:3px;font:600 14px system-ui,sans-serif;z-index:2147483646;pointer-events:none;transition:opacity .2s}`;
     document.head.appendChild(style);
     const cursor = document.createElement('div');
     cursor.id = 'demo-cursor';
-    const [x, y] = JSON.parse(store.getItem('demo-pos') || '[-40,-40]');
-    cursor.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(239,68,68,.35);border:2px solid #ef4444;z-index:2147483647;pointer-events:none;transition:transform .12s`;
+    cursor.innerHTML = '<svg width="26" height="26" viewBox="0 0 26 26"><path d="M3 2 L3 21 L8 16.5 L11.5 24 L15 22.5 L11.6 15.2 L18.5 15.2 Z" fill="#111827" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
     document.body.appendChild(cursor);
-    const strip = document.createElement('div');
-    strip.id = 'demo-caption';
-    strip.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:80%;padding:12px 22px;border-radius:12px;background:rgba(15,23,42,.88);color:#fff;font:600 18px/1.35 system-ui,sans-serif;text-align:center;z-index:2147483646;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.3)';
-    document.body.appendChild(strip);
-    window.__demoCaption = (text) => { store.setItem('demo-caption', text); strip.textContent = text; strip.style.display = text ? 'block' : 'none'; };
-    window.__demoCaption(store.getItem('demo-caption') || '');
-    document.addEventListener('mousemove', (e) => { cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px'; store.setItem('demo-pos', JSON.stringify([e.clientX, e.clientY])); }, true);
-    document.addEventListener('mousedown', () => { cursor.style.transform = 'scale(.6)'; }, true);
-    document.addEventListener('mouseup', () => { cursor.style.transform = ''; }, true);
+    let pos = JSON.parse(store.getItem('demo-pos') || `[${innerWidth * 0.78},${innerHeight * 0.76}]`);
+    let gliding = false;
+    const set = (x, y) => { pos = [x, y]; cursor.style.transform = `translate(${x - 3}px,${y - 3}px)`; store.setItem('demo-pos', JSON.stringify(pos)); };
+    set(...pos);
+    window.__demoGlide = (x, y, ms) => new Promise((done) => {
+      const [sx, sy] = pos, t0 = performance.now(), d = Math.hypot(x - sx, y - sy);
+      const nx = d ? -(y - sy) / d : 0, ny = d ? (x - sx) / d : 0, bow = Math.min(60, d * 0.08);
+      const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+      gliding = true;
+      const step = (now) => {
+        const k = Math.min(1, (now - t0) / ms), e = ease(k), arc = Math.sin(Math.PI * e) * bow;
+        set(sx + (x - sx) * e + nx * arc, sy + (y - sy) * e + ny * arc);
+        if (k < 1) requestAnimationFrame(step); else { gliding = false; done(); }
+      };
+      requestAnimationFrame(step);
+    });
+    window.__demoKey = (label) => {
+      const k = document.createElement('div');
+      k.id = 'demo-key'; k.textContent = label;
+      k.style.left = pos[0] + 18 + 'px'; k.style.top = pos[1] + 22 + 'px';
+      document.body.appendChild(k);
+      setTimeout(() => { k.style.opacity = '0'; setTimeout(() => k.remove(), 250); }, 700);
+    };
+    window.__demoCard = (html) => {
+      const c = document.createElement('div');
+      c.id = 'demo-card'; c.innerHTML = html;
+      c.style.cssText = 'position:fixed;inset:0;z-index:2147483645;transition:opacity .5s ease';
+      document.body.appendChild(c);
+    };
+    window.__demoCardOut = () => { const c = document.getElementById('demo-card'); if (!c) return; c.style.opacity = '0'; setTimeout(() => c.remove(), 600); };
+    document.addEventListener('mousemove', (e) => { if (!gliding) set(e.clientX, e.clientY); }, true);
+    document.addEventListener('mousedown', (e) => {
+      cursor.classList.add('down');
+      const r = document.createElement('div');
+      r.className = 'demo-ripple'; r.style.left = e.clientX + 'px'; r.style.top = e.clientY + 'px';
+      document.body.appendChild(r); setTimeout(() => r.remove(), 600);
+    }, true);
+    document.addEventListener('mouseup', () => cursor.classList.remove('down'), true);
   };
   if (document.body) draw(); else document.addEventListener('DOMContentLoaded', draw);
+  let last;
+  const watchDialog = () => {
+    const dialogs = [...document.querySelectorAll('[role="dialog"]')].filter((el) => el.getClientRects().length);
+    const rect = dialogs.at(-1)?.getBoundingClientRect();
+    const box = rect ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null;
+    const key = JSON.stringify(box && Object.values(box).map(Math.round));
+    if (key !== last) { last = key; window.__demoDialog?.(box); }
+  };
+  document.addEventListener('DOMContentLoaded', () => {
+    new MutationObserver(watchDialog).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+    new ResizeObserver(watchDialog).observe(document.body);
+    watchDialog();
+  });
 }
-const esc = (t) => String(t).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-const titleCard = (d) => `<body style="margin:0;height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;font-family:system-ui,sans-serif">
+const cardHtml = (d) => `<div style="height:100%;display:grid;place-items:center;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;font-family:system-ui,sans-serif">
   <div style="text-align:center;max-width:80%">
     <div style="display:inline-block;padding:6px 16px;border-radius:999px;background:#38bdf8;color:#0f172a;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:15px">${esc(report.role === 'anon' ? (d.as ?? 'Any user') : report.role)}</div>
-    <h1 style="font-size:44px;margin:22px 0 14px">${esc(d.title)}</h1>
+    <h1 style="font-size:44px;margin:22px 0 14px;color:#fff">${esc(d.title)}</h1>
     <p style="font-size:21px;color:#cbd5e1;line-height:1.5;margin:0">${esc(d.summary ?? '')}</p>
-  </div></body>`;
-let mouse = [-40, -40];
-async function glide(el) {
-  await el.scrollIntoViewIfNeeded().catch(() => {});
-  const box = await el.boundingBox();
-  if (!box) return;
-  const to = [box.x + box.width / 2, box.y + box.height / 2];
-  await page.mouse.move(...to, { steps: Math.max(8, Math.round(Math.hypot(to[0] - mouse[0], to[1] - mouse[1]) / 25)) });
-  mouse = to;
-  await page.waitForTimeout(250);
+  </div></div>`;
+
+async function startCapture() {
+  const cdp = await ctx.newCDPSession(page);
+  const frameDir = join(dir, 'frames');
+  mkdirSync(frameDir, { recursive: true });
+  const initial = join(frameDir, 'initial.jpg');
+  await page.screenshot({ path: initial, type: 'jpeg', quality: 90 });
+  const frames = [{ f: initial, t: Date.now() }];
+  const onFrame = ({ data, metadata, sessionId }) => {
+    cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
+    if (capture.paused || metadata.timestamp * 1000 - capture.excludedMs <= frames.at(-1).t) return;
+    const f = join(frameDir, `${String(frames.length).padStart(6, '0')}.jpg`);
+    writeFileSync(f, Buffer.from(data, 'base64'));
+    frames.push({ f, t: metadata.timestamp * 1000 - capture.excludedMs });
+  };
+  capture = { cdp, frames, frameDir, excludedMs: 0, paused: false, startedAt: Date.now(), onFrame };
+  cdp.on('Page.screencastFrame', onFrame);
+  await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: viewport.width * 2, maxHeight: viewport.height * 2 });
+  const deadline = Date.now() + STEP_TIMEOUT;
+  while (!frames.length) {
+    if (Date.now() > deadline) throw new Error('CDP screencast produced no frame');
+    await page.waitForTimeout(20);
+  }
+  ev('start');
 }
-const PACE = 700;
+async function stopCapture() {
+  const current = capture;
+  current.paused = true;
+  current.cdp.off('Page.screencastFrame', current.onFrame);
+  const end = Date.now() - current.excludedMs;
+  const encodeStart = Date.now();
+  await current.cdp.send('Page.stopScreencast');
+  const { frames, frameDir } = current;
+  const t0 = frames[0].t;
+  const quote = (path) => path.replace(/'/g, "'\\''");
+  const list = frames.map((fr, i) => `file '${quote(fr.f)}'\nduration ${Math.max(0.001, ((frames[i + 1]?.t ?? end) - fr.t) / 1000).toFixed(4)}`);
+  writeFileSync(join(frameDir, 'list.txt'), `ffconcat version 1.0\n${list.join('\n')}\nfile '${quote(frames.at(-1).f)}'\n`);
+  execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', join(frameDir, 'list.txt'),
+    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p', '-fps_mode', 'passthrough', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-f', 'matroska', DEMO_OUT]);
+  writeFileSync(DEMO_OUT.replace(/\.src\.mkv$/, '.events.json'), JSON.stringify({ viewport, dsf: 2, fps: 30, frames: frames.length,
+    events: events.map((e) => ({ ...e, t: Math.max(0, e.t - t0) })), end: end - t0, captureWallMs: Date.now() - current.startedAt, sourceEncodeMs: Date.now() - encodeStart }, null, 2));
+  rmSync(frameDir, { recursive: true });
+  console.log(`CAPTURE wall=${((Date.now() - current.startedAt) / 1000).toFixed(2)}s sourceEncode=${((Date.now() - encodeStart) / 1000).toFixed(2)}s frames=${frames.length}`);
+  await current.cdp.detach();
+}
+async function boxOf(el) {
+  const box = await el.boundingBox().catch(() => null);
+  if (box && box.width && box.height) return box;
+  return el.evaluate((e) => { const r = (e.closest('label') || e.parentElement).getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }).catch(() => null);
+}
+async function glideTo(el, verb, at) {
+  const inView = await el.evaluate((e) => { const r = (e.offsetParent ? e : e.parentElement).getBoundingClientRect(); return r.top >= 64 && r.bottom <= innerHeight - 96; }).catch(() => true);
+  if (!inView) {
+    await el.evaluate((e) => (e.offsetParent ? e : e.parentElement).scrollIntoView({ behavior: 'smooth', block: 'center' })).catch(() => {});
+    await page.waitForTimeout(550);
+  }
+  const box = await boxOf(el);
+  if (!box) return;
+  const to = at ? [box.x + at[0], box.y + at[1]] : [box.x + Math.min(box.width / 2, 120), box.y + box.height / 2];
+  const ms = Math.round(Math.min(950, Math.max(380, 300 + Math.hypot(to[0] - mouse[0], to[1] - mouse[1]) * 0.7)));
+  const step = events.findLast((e) => e.type === 'step');
+  if (step) step.box = box;
+  ev('glide', { verb, box, to, ms });
+  await page.evaluate(([x, y, d]) => window.__demoGlide?.(x, y, d), [...to, ms]);
+  await page.mouse.move(...to);
+  mouse = to;
+  await page.waitForTimeout(140);
+}
+const clearCaption = () => {
+  if (activeCaption) { activeCaption = ''; ev('captionClear'); }
+};
+let mouse = [viewport.width * 0.78, viewport.height * 0.76];
+const PACE = 300;
+const deferred = [];
+let posterMarked = false;
+let secondPage = false;
+if (RECORDING) ctx.on('page', () => { secondPage = true; });
 
 const apiPath = (url) => url.slice(API_URL.length) || '/';
 const failing = new Set(sub(spec.failApi ?? []));
@@ -169,7 +298,9 @@ async function target(t) {
   if (t.text) return root.getByText(t.text, { exact: true }).first();
   throw new Error(`unknown target ${JSON.stringify(t)}`);
 }
-const settle = () => page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
+const networkIdle = () => page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
+// Once an iframe commits, Playwright can leave networkidle unset until another request ends, so a recorded action also stops at apiQuiet.
+const settle = () => (RECORDING ? Promise.race([networkIdle(), apiQuiet()]) : networkIdle());
 // networkidle resolves at once after the first load, so track our own pending requests instead.
 async function apiQuiet() {
   const end = Date.now() + 5_000;
@@ -200,31 +331,54 @@ const actions = {
   goto: async (p) => { await page.goto(WEB_URL + p, { waitUntil: 'networkidle', timeout: 60_000 }); },
   click: async (t, s) => {
     const el = await target(t);
-    if (DEMO_OUT && !s.at) await glide(el);
+    if (RECORDING) await glideTo(el, 'click', s.at);
     await el.click(s.at ? { position: { x: s.at[0], y: s.at[1] } } : {});
     await settle();
   },
   fill: async (t, s) => {
     const el = await target(t);
-    if (!DEMO_OUT || /^(date|datetime-local|time|month)$/.test(await el.getAttribute('type') ?? '')) return el.fill(String(s.value));
-    await glide(el);
+    if (!RECORDING) return el.fill(String(s.value));
+    await glideTo(el, 'fill');
+    await el.click();
+    if (/^(date|datetime-local|time|month)$/.test(await el.getAttribute('type') ?? '')) return el.fill(String(s.value));
+    ev('type', { chars: String(s.value).length });
     await el.fill('');
-    await el.pressSequentially(String(s.value), { delay: 45 });
+    await el.pressSequentially(String(s.value), { delay: 70 });
   },
   caption: async (text) => {
-    if (!DEMO_OUT) return;
-    await page.evaluate((t) => window.__demoCaption?.(t), text);
-    await page.waitForTimeout(Math.min(4_000, 1_200 + text.length * 35));
+    if (!RECORDING) return;
+    activeCaption = text;
+    ev('caption', { text });
+    await page.waitForTimeout(Math.min(2_800, 650 + text.length * 28));
+    clearCaption();
   },
-  upload: async (t, s) => { await (await target(t)).setInputFiles(String(s.value)); await settle(); },
+  upload: async (t, s) => {
+    const el = await target(t);
+    if (RECORDING) await glideTo(el, 'upload');
+    await el.setInputFiles(String(s.value));
+    await settle();
+  },
   select: async (t, s) => {
     const el = await target(t);
-    if (DEMO_OUT) await glide(el);
+    if (RECORDING) await glideTo(el, 'select');
     await poll(async () => (await el.locator('option').evaluateAll((os, v) => os.some((o) => o.value === v || o.textContent.trim() === v), String(s.value))) || 'option missing', `option ${s.value}`);
     await el.selectOption(String(s.value)).catch(() => el.selectOption({ label: String(s.value) }));
     await settle();
   },
-  press: async (k) => { await page.keyboard.press(k); await settle(); },
+  press: async (k) => {
+    if (RECORDING) {
+      const focused = page.locator(':focus');
+      if (await focused.count()) await glideTo(focused.first(), 'press');
+      await page.evaluate((label) => window.__demoKey?.(label), k);
+    }
+    await page.keyboard.press(k);
+    await settle();
+  },
+  poster: async () => {
+    if (!RECORDING) return;
+    await page.screenshot({ path: DEMO_OUT.replace(/\.src\.mkv$/, '.poster.png') });
+    posterMarked = true;
+  },
   wait: async (ms) => { await page.waitForTimeout(ms); },
   failApi: async (fs) => { for (const f of fs) failing.add(f); },
   unfailApi: async (fs) => { for (const f of fs) failing.delete(f); },
@@ -257,6 +411,7 @@ const actions = {
     if (off.length) throw new Error(`${off[0]} in a ${w[1]}px viewport`);
   },
   apiCheck: async (c) => {
+    if (RECORDING && capture) { deferred.push({ check: c, stepIndex: report.steps.length }); return; }
     try {
       const out = control('api', 'call', '--expect', String(c.expect ?? 200), c.as, 'GET', c.path);
       if (c.jq) jq(c.jq, responseBody(out));
@@ -264,23 +419,59 @@ const actions = {
   },
 };
 
-if (DEMO_OUT) {
-  if (!spec.demo?.title) throw new Error('a demo spec needs demo.title');
-  await page.setContent(titleCard(spec.demo));
-  await page.waitForTimeout(3_000);
+let steps = spec.steps;
+if (RECORDING) {
+  try {
+    if (!spec.demo?.title || !steps[0]?.goto) throw new Error('a demo needs demo.title and a first goto step');
+    await actions.goto(sub(steps[0]).goto);
+    report.steps.push({ n: '01', desc: `goto ${JSON.stringify(sub(steps[0]).goto)}`, ok: true });
+    console.log('STEP 01 OK goto (before capture)');
+    steps = steps.slice(1);
+    await page.evaluate((h) => window.__demoCard?.(h), cardHtml(spec.demo));
+    await page.mouse.move(...mouse);
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await startCapture();
+    ev('card');
+    await page.waitForTimeout(Math.min(2_400, 1_200 + (spec.demo.title.length + (spec.demo.summary ?? '').length) * 8));
+    await page.evaluate(() => window.__demoCardOut?.());
+    await page.waitForTimeout(500);
+    ev('cardOut');
+  } catch (error) {
+    failed = `recording setup: ${error.message.split('\n')[0]}`;
+    const first = report.steps[0] ?? { n: '01', desc: `goto ${JSON.stringify(sub(spec.steps[0]?.goto))}` };
+    first.ok = false;
+    first.error = failed;
+    if (!report.steps.length) report.steps.push(first);
+    console.log(`STEP 01 FAIL ${first.desc} :: ${failed}`);
+    await page.screenshot({ path: join(dir, 'failure.png') }).catch(() => {});
+    await finish(async () => { await ctx.close(); await browser.close(); });
+  }
 }
-const PACED = new Set(['goto', 'click', 'fill', 'select', 'press']);
-for (const [i, raw] of spec.steps.entries()) {
+const PACED = new Set(['goto', 'click', 'fill', 'select', 'press', 'upload']);
+for (const [i, raw] of steps.entries()) {
   const s = sub(raw);
   const verb = Object.keys(actions).find((k) => k in s);
-  const n = String(i + 1).padStart(2, '0');
+  const n = String(i + 1 + spec.steps.length - steps.length).padStart(2, '0');
   const desc = `${verb} ${JSON.stringify(s[verb])}${'value' in s ? ` = ${JSON.stringify(s.value)}` : ''}`;
   try {
     if (!verb) throw new Error(`unknown step ${JSON.stringify(s)}`);
-    await actions[verb](s[verb], s);
+    if (RECORDING) ev('step', { verb, n, ...(verb === 'caption' && { caption: s.caption }), header: await page.evaluate(() => document.querySelector('header')?.innerText ?? '') });
+    const assertion = verb.startsWith('expect') || verb === 'apiCheck' || verb === 'screenshot' || verb === 'poster';
+    const pauseStart = Date.now();
+    if (capture && assertion) capture.paused = true;
+    try { await actions[verb](s[verb], s); }
+    finally {
+      if (capture && assertion) {
+        capture.excludedMs += Date.now() - pauseStart;
+        capture.paused = false;
+        if ('pendingDialog' in capture) { ev('dialog', { box: capture.pendingDialog }); delete capture.pendingDialog; }
+      }
+    }
+    if (secondPage) throw new Error('demo opened a second page; only one page can be recorded');
     if (DEMO_OUT && PACED.has(verb)) await page.waitForTimeout(PACE);
-    report.steps.push({ n, desc, ok: true });
-    console.log(`STEP ${n} OK ${desc}`);
+    const pending = RECORDING && capture && verb === 'apiCheck';
+    report.steps.push({ n, desc, ok: pending ? null : true });
+    if (!pending) console.log(`STEP ${n} OK ${desc}`);
   } catch (e) {
     failed = `step ${n} ${desc}: ${e.message.split('\n')[0]}`;
     report.steps.push({ n, desc, ok: false, error: e.message.split('\n')[0] });
@@ -288,15 +479,35 @@ for (const [i, raw] of spec.steps.entries()) {
     break;
   }
 }
-if (DEMO_OUT) await page.waitForTimeout(2_000);
+if (RECORDING) {
+  clearCaption();
+  if (!posterMarked) await actions.poster();
+  await page.waitForTimeout(650);
+  ev('end');
+}
+if (RECORDING && capture) {
+  await stopCapture();
+  capture = null;
+  for (const { check, stepIndex } of failed ? [] : deferred) {
+    const step = report.steps[stepIndex];
+    try {
+      await actions.apiCheck(check);
+      step.ok = true;
+      console.log(`STEP ${step.n} OK ${step.desc} (after capture)`);
+    } catch (error) {
+      failed = `step ${step.n} ${step.desc}: ${error.message}`;
+      step.ok = false;
+      step.error = error.message;
+      console.log(`STEP ${step.n} FAIL ${step.desc} :: ${error.message}`);
+    }
+  }
+}
 await page.screenshot({ path: join(dir, failed ? 'failure.png' : 'final.png') }).catch(() => {});
 report.finalUrl = page.url();
 report.title = await page.title().catch(() => '');
 await Promise.all(sizing);
 for (const r of report.requests) delete r.q;
 await finish(async () => {
-  const video = page.video();
   await ctx.close();
-  if (video) renameSync(await video.path(), DEMO_OUT);
   await browser.close();
 });

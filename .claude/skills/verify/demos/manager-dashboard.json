@@ -7,8 +7,8 @@
     "summary": "The manager opens the dashboard for the hotel's totals, then narrows the revenue to today and to last month."
   },
   "setup": [
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Bethlehem Asfaw", "phone": "0911820453" }, "expect": 201, "save": "GUEST1" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Ermias Wondimu", "phone": "0929045716" }, "expect": 201, "save": "GUEST2" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Hafsa Ali", "phone": "0911820453" }, "expect": 201, "save": "GUEST1" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Hassan Omar", "phone": "0929045716" }, "expect": 201, "save": "GUEST2" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "357", "type": "double", "price": 1700 }, "expect": 201, "save": "ROOM1" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "358", "type": "suite", "price": 3200 }, "expect": 201, "save": "ROOM2" },
     { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST1}", "roomId": "${ROOM1}", "checkIn": "${DATE+0}", "checkOut": "${DATE+2}" }, "expect": 201, "save": "BOOKING1" },

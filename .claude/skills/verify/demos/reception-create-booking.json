@@ -8,7 +8,7 @@
   },
   "setup": [
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "201", "type": "double", "price": 1500 }, "expect": 201, "save": "ROOM" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Hana Tesfaye", "phone": "0911223344" }, "expect": 201, "save": "GUEST" }
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Ayaan Ali", "phone": "0911223344" }, "expect": 201, "save": "GUEST" }
   ],
   "steps": [
     { "goto": "/bookings" },
@@ -16,6 +16,7 @@
     { "click": { "role": "button", "name": "Create Booking" } },
     { "caption": "Step 1. Pick the guest." },
     { "select": { "label": "Guest" }, "value": "${GUEST}" },
+    { "poster": true },
     { "click": { "role": "button", "name": "Next" } },
     { "caption": "Step 2. Choose the dates and a free room." },
     { "fill": { "label": "Check-in" }, "value": "${DATE+3}" },

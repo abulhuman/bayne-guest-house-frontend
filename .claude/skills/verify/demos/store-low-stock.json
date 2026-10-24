@@ -23,6 +23,7 @@
     { "select": "select:has(option:text-is('All categories'))", "value": "Housekeeping" },
     { "expectNoText": "Fresh milk" },
     { "expectText": "Laundry detergent" },
+    { "poster": true },
     { "expectApi": "GET /inventory 200" },
     { "caption": "Laundry detergent needs reordering." },
     { "apiCheck": { "as": "store", "path": "/inventory?low=true&category=Housekeeping", "jq": "any(.[]; .name == \"Laundry detergent\") and all(.[]; .name != \"Shampoo sachets\")" } }

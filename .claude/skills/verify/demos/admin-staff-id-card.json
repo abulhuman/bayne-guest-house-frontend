@@ -7,18 +7,19 @@
     "summary": "The admin opens a receptionist's ID card with its barcode to download or print it."
   },
   "setup": [
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Abebe Kebede", "role": "reception", "phone": "0918901234" }, "expect": 201, "save": "STAFF" }
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Abdirahman Mohamed", "role": "reception", "phone": "0918901234" }, "expect": 201, "save": "STAFF" }
   ],
   "steps": [
     { "goto": "/staff" },
     { "caption": "Each staff member has an ID card with a barcode for attendance." },
-    { "click": "tr:has-text('Abebe Kebede') >> role=button[name='ID card']" },
+    { "click": "tr:has-text('Abdirahman Mohamed') >> role=button[name='ID card']" },
     { "expectApi": "GET /staff/${STAFF}/id-card 200" },
     { "expectVisible": { "role": "dialog", "name": "ID card" } },
     { "expectVisible": { "role": "link", "name": "Download" } },
     { "expectVisible": { "role": "button", "name": "Print" } },
     { "caption": "Download the card or print it on A4 from here." },
     { "wait": 1500 },
+    { "poster": true },
     { "click": { "role": "button", "name": "Close" } },
     { "expectHidden": { "role": "dialog", "name": "ID card" } },
     { "caption": "" },

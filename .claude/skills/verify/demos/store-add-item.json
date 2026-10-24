@@ -15,6 +15,7 @@
     { "goto": "/inventory" },
     { "caption": "Inventory lists every stocked item. Add a new one." },
     { "click": { "role": "button", "name": "New Item" } },
+    { "poster": true },
     { "caption": "Name it, pick a category and unit, and set the opening stock." },
     { "fill": { "label": "Name" }, "value": "Yirgacheffe coffee beans" },
     { "fill": { "label": "Category" }, "value": "Beverages" },

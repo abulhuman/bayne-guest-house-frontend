@@ -7,9 +7,9 @@
     "summary": "Reception records a guest's payment for a booking, and the app works out the total from the nights and the room rate."
   },
   "setup": [
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Mekdes Alemu", "phone": "0911456723" }, "expect": 201, "save": "GUEST1" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Yonas Girma", "phone": "0922318845" }, "expect": 201, "save": "GUEST2" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Selam Bekele", "phone": "0913775520" }, "expect": 201, "save": "GUEST3" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Sumaya Ali", "phone": "0911456723" }, "expect": 201, "save": "GUEST1" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Yasin Hassan", "phone": "0922318845" }, "expect": 201, "save": "GUEST2" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Maryan Osman", "phone": "0913775520" }, "expect": 201, "save": "GUEST3" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "330", "type": "double", "price": 1800 }, "expect": 201, "save": "ROOM1" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "331", "type": "single", "price": 1200 }, "expect": 201, "save": "ROOM2" },
     { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "332", "type": "suite", "price": 3500 }, "expect": 201, "save": "ROOM3" },
@@ -35,7 +35,7 @@
     { "click": { "role": "button", "name": "Record" } },
     { "expectApi": "POST /payments 201" },
     { "expectHidden": "role=dialog" },
-    { "expectVisible": "tr:has-text('Mekdes Alemu'):has-text('ETB\u00a05,400.00'):has-text('CBE Transfer') >> nth=0" },
+    { "expectVisible": "tr:has-text('Sumaya Ali'):has-text('ETB\u00a05,400.00'):has-text('CBE Transfer') >> nth=0" },
     { "caption": "The payment is now at the top of the list." },
     { "apiCheck": { "as": "reception", "path": "/payments", "jq": "any(.[]; .bookingId == ${BOOKING1} and .amount == 5400 and .status == \"paid\" and .method == \"cbe\")" } }
   ]

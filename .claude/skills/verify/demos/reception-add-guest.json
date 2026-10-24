@@ -6,18 +6,32 @@
     "title": "Add a guest",
     "summary": "Reception saves a guest profile so the guest can be picked for bookings later."
   },
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "681", "type": "Single", "price": 1200 }, "expect": 201, "save": "ROOM" }
+  ],
   "steps": [
     { "goto": "/guests" },
     { "caption": "The Guests page keeps a profile for everyone who stays." },
     { "click": { "role": "button", "name": "Add Guest" } },
-    { "caption": "Enter the guest's name and phone. Email is optional." },
-    { "fill": { "label": "Full name" }, "value": "Yonas Girma" },
+    { "click": { "role": "button", "name": "Add Guest" } },
+    { "expectText": "Name is required" },
+    { "expectText": "Phone is required" },
+    { "caption": "A name and phone are required. Email is optional." },
+    { "fill": { "label": "Full name" }, "value": "Yasin Hassan" },
     { "fill": { "label": "Phone" }, "value": "0933445566" },
-    { "fill": { "label": "Email" }, "value": "yonas.${RUN}@example.com" },
+    { "fill": { "label": "Email" }, "value": "yasin.${RUN}@example.com" },
     { "click": { "role": "button", "name": "Add Guest" } },
     { "expectApi": "POST /guests 201" },
-    { "expectText": "yonas.${RUN}@example.com" },
-    { "caption": "Yonas is now in the list and can be booked." },
-    { "apiCheck": { "as": "reception", "path": "/guests", "jq": "any(.[]; .name == \"Yonas Girma\" and .email == \"yonas.${RUN}@example.com\")" } }
+    { "expectText": "yasin.${RUN}@example.com" },
+    { "caption": "Yasin is now in the list and can be booked." },
+    { "goto": "/bookings" },
+    { "click": { "role": "button", "name": "Create Booking" } },
+    { "select": { "label": "Guest" }, "value": "Yasin Hassan — 0933445566" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "fill": { "label": "Check-in" }, "value": "${DATE+3}" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+4}" },
+    { "select": { "label": "Room" }, "value": "${ROOM}" },
+    { "poster": true },
+    { "apiCheck": { "as": "reception", "path": "/guests", "jq": "any(.[]; .name == \"Yasin Hassan\" and .email == \"yasin.${RUN}@example.com\")" } }
   ]
 }

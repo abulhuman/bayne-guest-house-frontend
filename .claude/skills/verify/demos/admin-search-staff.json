@@ -7,24 +7,34 @@
     "summary": "The admin filters the staff list to see who works in housekeeping."
   },
   "setup": [
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Hana Getachew", "role": "reception", "phone": "0919012345" }, "expect": 201 },
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Bereket Tesfaye", "role": "security", "phone": "0920123456" }, "expect": 201 },
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Liya Worku", "role": "housekeeping", "phone": "0921234567" }, "expect": 201 },
-    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Samuel Abera", "role": "housekeeping", "phone": "0923456789" }, "expect": 201 }
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Hawa Osman", "role": "reception", "phone": "0919012345" }, "expect": 201 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Abdirizak Hassan", "role": "security", "phone": "0920123456" }, "expect": 201 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Ifrah Abdi", "role": "housekeeping", "phone": "0921234567" }, "expect": 201 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Omar Ibrahim", "role": "housekeeping", "phone": "0923456789" }, "expect": 201 }
   ],
   "steps": [
     { "goto": "/staff" },
     { "expectApi": "GET /staff 200" },
     { "caption": "Search by name, role, phone, barcode or email." },
     { "fill": { "placeholder": "Search name, role, phone, barcode, email…" }, "value": "housekeeping" },
-    { "expectText": "Liya Worku" },
-    { "expectText": "Samuel Abera" },
-    { "expectNoText": "Bereket Tesfaye" },
+    { "expectText": "Ifrah Abdi" },
+    { "expectText": "Omar Ibrahim" },
+    { "expectNoText": "Abdirizak Hassan" },
+    { "click": "tr:has-text('Ifrah Abdi') >> input[type='checkbox']" },
+    { "expectText": "Print selected (1)" },
     { "caption": "Only the housekeeping team is left in the list." },
     { "caption": "A phone number works as well." },
     { "fill": { "placeholder": "Search name, role, phone, barcode, email…" }, "value": "0919012345" },
-    { "expectText": "Hana Getachew" },
-    { "expectNoText": "Liya Worku" },
-    { "apiCheck": { "as": "admin", "path": "/staff", "jq": "any(.[]; .name == \"Liya Worku\" and .role == \"housekeeping\")" } }
+    { "expectText": "Hawa Osman" },
+    { "expectNoText": "Ifrah Abdi" },
+    { "poster": true },
+    { "caption": "Open the one result to confirm it is the right staff record." },
+    { "click": "tr:has-text('Hawa Osman') >> role=button[name='Edit']" },
+    { "expectVisible": { "role": "dialog", "name": "Edit Staff" } },
+    { "click": { "role": "button", "name": "Cancel" } },
+    { "click": "tr:has-text('Hawa Osman') >> role=button[name='ID card']" },
+    { "expectVisible": { "role": "dialog", "name": "ID card" } },
+    { "click": { "role": "button", "name": "Close" } },
+    { "apiCheck": { "as": "admin", "path": "/staff", "jq": "any(.[]; .name == \"Ifrah Abdi\" and .role == \"housekeeping\")" } }
   ]
 }

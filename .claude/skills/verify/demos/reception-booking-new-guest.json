@@ -15,7 +15,7 @@
     { "click": { "role": "button", "name": "Create Booking" } },
     { "caption": "Step 1. The guest is new, so add their details here." },
     { "click": { "role": "button", "name": "New guest" } },
-    { "fill": { "label": "Full name" }, "value": "Dawit Alemu" },
+    { "fill": { "label": "Full name" }, "value": "Abdi Omar" },
     { "fill": { "label": "Phone" }, "value": "0922334455" },
     { "click": { "role": "button", "name": "Next" } },
     { "expectNoApi": "POST /guests" },
@@ -24,14 +24,15 @@
     { "fill": { "label": "Check-out" }, "value": "${DATE+4}" },
     { "select": { "label": "Room" }, "value": "${ROOM}" },
     { "click": { "role": "button", "name": "Next" } },
-    { "expectText": "Dawit Alemu — 0922334455 (new)" },
+    { "expectText": "Abdi Omar — 0922334455 (new)" },
     { "caption": "Step 3. Review. The guest is marked new and gets saved with the booking." },
+    { "poster": true },
     { "click": { "role": "button", "name": "Create booking" } },
     { "expectApi": "POST /guests 201" },
     { "expectApi": "POST /bookings 201" },
     { "expectText": "Booking created successfully" },
-    { "expectText": "Dawit Alemu" },
+    { "expectText": "Abdi Omar" },
     { "caption": "The booking and the new guest are both saved." },
-    { "apiCheck": { "as": "reception", "path": "/bookings", "jq": "any(.[]; .guest.name == \"Dawit Alemu\" and .roomId == ${ROOM})" } }
+    { "apiCheck": { "as": "reception", "path": "/bookings", "jq": "any(.[]; .guest.name == \"Abdi Omar\" and .roomId == ${ROOM})" } }
   ]
 }

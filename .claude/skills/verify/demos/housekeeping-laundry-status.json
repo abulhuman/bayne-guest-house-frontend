@@ -7,8 +7,8 @@
     "summary": "Housekeeping finds the pending laundry, marks an order in progress when washing starts, and done when it goes back to the guest."
   },
   "setup": [
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Kebede Ayele", "phone": "0915207741" }, "expect": 201, "save": "GUEST1" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Liya Fikru", "phone": "0926483310" }, "expect": 201, "save": "GUEST2" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Mohamed Abdi", "phone": "0915207741" }, "expect": 201, "save": "GUEST1" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Amina Ali", "phone": "0926483310" }, "expect": 201, "save": "GUEST2" },
     { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST2}", "items": "2 Bed sheets, 2 Pillow cases", "price": 160 }, "expect": 201 },
     { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST1}", "items": "4 Shirts, 1 Suit jacket", "price": 320 }, "expect": 201, "save": "LID" }
   ],
@@ -19,16 +19,17 @@
     { "expectVisible": "tr:has-text('4 Shirts, 1 Suit jacket') >> nth=0" },
     { "caption": "Washing has started on this order. Edit it." },
     { "click": "tr:has-text('4 Shirts, 1 Suit jacket') >> nth=0 >> role=button[name='Edit']" },
-    { "select": "tr:has-text('Kebede Ayele') >> nth=0 >> select", "value": "in_progress" },
-    { "click": "tr:has-text('Kebede Ayele') >> nth=0 >> role=button[name='Save']" },
+    { "select": "tr:has-text('Mohamed Abdi') >> nth=0 >> select", "value": "in_progress" },
+    { "click": "tr:has-text('Mohamed Abdi') >> nth=0 >> role=button[name='Save']" },
     { "expectApi": "PATCH /laundry/${LID} 200" },
     { "caption": "It drops out of the pending list. Show all orders." },
     { "select": "select:has(option[value='All'])", "value": "All" },
     { "expectVisible": "tr:has-text('4 Shirts, 1 Suit jacket'):has-text('in_progress') >> nth=0" },
     { "caption": "Later the clean clothes go back to the guest. Mark it done." },
     { "click": "tr:has-text('4 Shirts, 1 Suit jacket') >> nth=0 >> role=button[name='Edit']" },
-    { "select": "tr:has-text('Kebede Ayele') >> nth=0 >> select", "value": "done" },
-    { "click": "tr:has-text('Kebede Ayele') >> nth=0 >> role=button[name='Save']" },
+    { "select": "tr:has-text('Mohamed Abdi') >> nth=0 >> select", "value": "done" },
+    { "poster": true },
+    { "click": "tr:has-text('Mohamed Abdi') >> nth=0 >> role=button[name='Save']" },
     { "expectVisible": "tr:has-text('4 Shirts, 1 Suit jacket'):has-text('done') >> nth=0" },
     { "caption": "The order now shows as done." },
     { "apiCheck": { "as": "housekeeping", "path": "/laundry", "jq": "any(.[]; .id == ${LID} and .status == \"done\")" } }

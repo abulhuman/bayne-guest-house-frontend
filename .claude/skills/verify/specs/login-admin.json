@@ -1,6 +1,9 @@
 {
   "name": "login-admin",
   "role": "anon",
+  "setup": [
+    { "as": "admin", "method": "GET", "path": "/auth/me", "expect": 200, "save": "ADMIN_NAME", "pick": ".user.name" }
+  ],
   "steps": [
     { "goto": "/login" },
     { "fill": { "placeholder": "you@example.com" }, "value": "admin@example.com" },
@@ -8,7 +11,7 @@
     { "click": { "role": "button", "name": "Sign in" } },
     { "expectApi": "POST /auth/login 201" },
     { "expectUrl": "/dashboard" },
-    { "expectText": "Welcome, Admin" },
+    { "expectText": "Welcome, ${ADMIN_NAME}" },
     { "expectVisible": { "role": "link", "name": "Staff" } }
   ]
 }

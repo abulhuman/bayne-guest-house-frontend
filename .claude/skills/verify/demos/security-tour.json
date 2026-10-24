@@ -20,6 +20,7 @@
     { "expectUrl": "/" },
     { "expectText": "No pages for your role" },
     { "caption": "Security has no pages in this app yet, so the screen says so." },
+    { "poster": true },
     { "click": { "role": "button", "name": "Logout" } },
     { "expectUrl": "/login" }
   ]

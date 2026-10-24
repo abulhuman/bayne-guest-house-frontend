@@ -109,7 +109,24 @@ $S demo                       # every spec in demos/, one DEMO PASS|FAIL line ea
 $S demo 'store-*'             # a glob over demo names
 ```
 
-A demo is a spec in [`demos/`](demos/) recorded as a silent 1280x800 mp4 in `.verify/demos/<name>.mp4`, with a poster `<name>.jpg` and a gallery `index.html` that groups videos by `demo.group`. Set `DEMO_DIR` to write somewhere else. It needs `ffmpeg`. A demo spec is a normal spec plus a `demo` block, `{"group": "reception", "title": "Create a booking", "summary": "One plain sentence."}`, which the video opens with as a title card. The card's badge shows `role`; a sign-in demo runs as `anon`, so give it `demo.as` to name the role it signs in as. In recording mode the driver paints a cursor dot, glides it to each target, types `fill` values key by key (date inputs are set at once), pauses after each action, and holds the last frame. The `caption` step shows a caption strip that survives navigation until the next `caption`; outside recording mode it does nothing. Assertions still run, so a failing demo produces no video. Name a demo `<role>-<task>`, give visible data realistic names, and keep `${RUN}` for fields that must be unique.
+A demo is a spec in [`demos/`](demos/) captured through Chromium CDP at device scale 2 and encoded with libx264 CRF 20. The default output width is 1920. A separate caption band below the recorded viewport keeps captions readable during whole-dialog zoom without hiding table rows. Set `DEMO_WIDTH` to an even output width of at least 320, or `DEMO_NO_ZOOM=1` for the capture-and-pacing performance baseline. `DEMO_DIR` selects the output directory, including one on another filesystem. Recording needs `ffmpeg` with libx264, zoompan and drawtext, Python 3, Fontconfig (`fc-match`) and a sans font.
+
+`demo` exports `DEMO_NAMES=1` before it starts or checks the stack. The backend must include the demo-name seed mode. If the current stack uses verification names, the command restarts it with a fresh database. For a clean recording set, export `DEMO_NAMES=1` before `up` and keep it set for later commands. All demo employee and guest display names, setup data, captions and matching assertions use common Somali Muslim names. Seeded login credentials stay unchanged.
+
+```bash
+export DEMO_NAMES=1
+$S down && $S up
+$S doctor
+$S demo 'reception-*'
+```
+
+Each successful demo writes `<name>.mp4`, `<name>.jpg`, `<name>.src.mkv` and `<name>.events.json`. The source and event log are kept for independent rendering and performance comparisons. The source holds only the frames the screencast sent, at their real timestamps, and `demo-render.py` resamples it to 30 fps. `scripts/demo-render.py` owns whole-dialog framing and the caption band. Dialog changes are observed while actions run, so close events start a short zoom-out immediately rather than waiting for a later step. The camera fits the whole dialog with padding and never follows individual fields. The gallery groups videos by `demo.group`.
+
+Give a demo a `demo` block, `{"group": "reception", "title": "Create a booking", "summary": "One plain sentence."}`. Its first step must be `goto`. The driver loads that page before capture and paints the title card over it, then fades the card away. A sign-in demo can use `demo.as` to name the role it signs in as. The arrow is visible in the first frame and glides to clicks, offset clicks, inputs, selects, uploads and focused keyboard targets. Text uses 70 ms per key. Date fields receive their value after the cursor reaches them.
+
+A `caption` step holds its text for a short reading interval and clears it when the step ends. Outside recordings it does nothing. Put `{"poster": true}` at the page or dialog to use for the poster; otherwise the driver uses the final action state. Tours mark a page before logout so their posters never show the login form. While recording, an action waits for network idle or for 500 ms with no backend request in flight, whichever comes first. After an iframe such as the ID card PDF preview, Playwright can leave network idle unset for its whole 5 s timeout, and the video would hold one frame for that long. Assertions run with capture paused, and independent `apiCheck` reads run after capture. They still gate `DEMO PASS`. A second tab or popup fails the demo because capture follows one page.
+
+The event log records the viewport, device scale, frame count, duration and timestamped events. Each step has `t`, `type`, `box` and `caption`, with the verb and header text where relevant. `dialog` events hold the whole visible dialog box or `null` on close; `glide` events hold their action target and destination. Use these events with the retained source for later renderers.
 
 ## Cleanup
 

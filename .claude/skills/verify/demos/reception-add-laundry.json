@@ -7,9 +7,9 @@
     "summary": "Reception logs a guest's laundry with its items and price, and the charge lands on the Payments page by itself."
   },
   "setup": [
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Hirut Wolde", "phone": "0912668401" }, "expect": 201, "save": "GUEST" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Samuel Assefa", "phone": "0921334590" }, "expect": 201, "save": "OTHER1" },
-    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Meron Getachew", "phone": "0944871236" }, "expect": 201, "save": "OTHER2" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Hibo Ali", "phone": "0912668401" }, "expect": 201, "save": "GUEST" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Mustafa Ahmed", "phone": "0921334590" }, "expect": 201, "save": "OTHER1" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Ilham Yusuf", "phone": "0944871236" }, "expect": 201, "save": "OTHER2" },
     { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${OTHER1}", "items": "3 Shirts, 2 Towels", "price": 210 }, "expect": 201 },
     { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${OTHER2}", "items": "1 Dress", "price": 120 }, "expect": 201 }
   ],
@@ -27,14 +27,15 @@
     { "click": "role=dialog >> button[title='Add row']" },
     { "fill": "role=dialog >> input[placeholder='Item name'] >> nth=1", "value": "Trousers" },
     { "expectText": "Preview: 2 Shirts, 1 Trousers" },
+    { "poster": true },
     { "caption": "Step 3. Save the order." },
     { "click": { "role": "button", "name": "Save Laundry" } },
     { "expectApi": "POST /laundry 201" },
     { "expectHidden": "role=dialog" },
-    { "expectVisible": "tr:has-text('2 Shirts, 1 Trousers'):has-text('Hirut Wolde') >> nth=0" },
+    { "expectVisible": "tr:has-text('2 Shirts, 1 Trousers'):has-text('Hibo Ali') >> nth=0" },
     { "caption": "The order is listed as pending. Its charge is recorded for you." },
     { "click": { "role": "link", "name": "Payments" } },
-    { "expectVisible": "tr:has-text('Hirut Wolde'):has-text('ETB\u00a0180.00') >> nth=0" },
+    { "expectVisible": "tr:has-text('Hibo Ali'):has-text('ETB\u00a0180.00') >> nth=0" },
     { "caption": "The Payments page shows the 180 birr laundry payment." },
     { "apiCheck": { "as": "reception", "path": "/payments", "jq": "any(.[]; .laundry.guestId == ${GUEST} and .laundry.items == \"2 Shirts, 1 Trousers\" and .amount == 180)" } }
   ]
