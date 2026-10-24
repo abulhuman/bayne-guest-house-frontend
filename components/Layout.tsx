@@ -17,6 +17,7 @@ export default function Layout({ children }: { children: ReactNode }) {
     router.pathname === path || router.pathname.startsWith(path + '/');
 
   const visibleItems = user ? pagesFor(user.role) : [];
+  const helpItem = visibleItems.find(item => item.path === '/help');
   const pageLabel = PAGES.find(page => isActive(page.path))?.label;
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <div className="border-b border-rail-text/15 p-4 text-xl font-bold text-rail-text-on">Almis Hotel</div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto p-2">
-          {visibleItems.map(item => (
+          {visibleItems.filter(item => item.path !== '/help').map(item => (
             <Link
               key={item.path}
               href={item.path}
@@ -71,6 +72,17 @@ export default function Layout({ children }: { children: ReactNode }) {
             <button onClick={logout} className="flex min-h-11 w-full items-center rounded-input px-3 text-left hover:bg-rail-text/10 hover:text-rail-text-on">
               Logout
             </button>
+          </div>
+        )}
+        {helpItem && (
+          <div className="border-t border-rail-text/15 p-2">
+            <Link
+              href={helpItem.path}
+              onClick={() => setMenuOpen(false)}
+              className={`flex min-h-11 items-center rounded-input px-3 font-medium transition-colors ${isActive(helpItem.path) ? 'bg-accent text-rail-text-on' : 'hover:bg-rail-text/10 hover:text-rail-text-on'}`}
+            >
+              {helpItem.label}
+            </Link>
           </div>
         )}
       </aside>

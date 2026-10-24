@@ -1,0 +1,54 @@
+{
+  "name": "help-role-finance",
+  "role": "finance",
+  "steps": [
+    {
+      "goto": "/help"
+    },
+    {
+      "expectApi": "GET /tutorials 200"
+    },
+    {
+      "expectText": "Search guides"
+    },
+    {
+      "expectNoText": "No guides are available yet."
+    },
+    {
+      "expectVisible": "h2:text-is(\"Payments\")"
+    },
+    {
+      "expectVisible": "button:text-is(\"Play tour\")"
+    },
+    {
+      "click": "button:text-is(\"Play tour\")"
+    },
+    {
+      "expectVisible": "[role=\"dialog\"] h3:text-is(\"Finance sign-in tour\")"
+    },
+    {
+      "press": "Escape"
+    },
+    {
+      "expectHidden": "[role=\"dialog\"]"
+    },
+    {
+      "expectVisible": "li button:has-text(\"Review payments\")"
+    },
+    {
+      "expectHidden": "h2:text-is(\"Bookings\")"
+    },
+    {
+      "expectHidden": "h2:text-is(\"Staff\")"
+    },
+    {
+      "expectNoText": "Create a booking"
+    },
+    {
+      "expectNoPageErrors": true
+    },
+    {
+      "screenshot": "help-finance"
+    }
+  ]
+}

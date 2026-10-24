@@ -10,9 +10,9 @@
     { "fill": { "placeholder": "••••••••" }, "value": "verify-pass-security" },
     { "click": { "role": "button", "name": "Sign in" } },
     { "expectApi": "POST /auth/login 201" },
-    { "expectUrl": "/" },
+    { "expectUrl": "/help" },
     { "expectNoVisit": "/dashboard" },
-    { "expectText": "No pages for your role" },
+    { "expectText": "Search guides" },
     { "click": { "role": "button", "name": "Logout" } },
     { "expectUrl": "/login" }
   ]
