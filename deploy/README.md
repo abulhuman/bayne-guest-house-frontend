@@ -2,7 +2,7 @@
 
 Production is `https://manage.almishotel.com`, using `https://api.almishotel.com`. PR previews are `https://pr-N.almishotel.com`. Each frontend PR owns a separate API, Postgres volume, JWT key, database password, and generated test admin. The preview frontend calls `/api` on its own hostname. Traefik strips that prefix and routes to its private preview API. Production data and credentials never enter a preview.
 
-The temporary deployment repository is https://github.com/abulhuman/bayne-guest-house-frontend. The original repository remains https://github.com/Jaal-moha/bayne-guest-house-frontend. Deployments currently follow the temporary fork's `main` and PRs targeting that branch. Changes in the original repository do not sync automatically.
+The temporary deployment repository is https://github.com/abulhuman/bayne-guest-house-frontend. The original repository remains https://github.com/Jaal-moha/bayne-guest-house-frontend. Production deploys `v*` release tags on the temporary fork. Merging to `main` builds and tests without deploying. Each PR targeting `main` gets a preview. Changes in the original repository do not sync automatically.
 
 ## Existing host infrastructure
 
@@ -47,7 +47,7 @@ python3 ~/.local/share/bayne/frontend/manage.py remove-preview --pr 42
 
 The manager waits for healthy containers, runs pending migrations in the preview database, creates the preview admin, then publishes DNS. Re-deploying a PR preserves its database and credentials. Its generated login is stored in `~/.local/share/bayne/frontend/previews/pr-N/admin.env`. Do not post that file in PR comments. Closing a PR removes its DNS record, containers, private network, database volume, and credentials. Image tags remain available for rollback and can be removed separately when no longer needed.
 
-A failed deployment can leave containers for inspection and retry. DNS is published only after local health checks pass. The deployment lock serializes host mutations. To roll back production, pass a retained prior frontend image to `manage.py main`; production database migrations are owned by the backend deployment.
+A failed deployment can leave containers for inspection and retry. DNS is published only after local health checks pass. The deployment lock serializes host mutations. To roll back production, re-run the workflow on an older tag with `gh workflow run "Deploy on-prem" --ref v1.3.0`, or pass a retained prior frontend image to `manage.py main`; production database migrations are owned by the backend deployment.
 
 ## GitHub Actions runner
 
@@ -61,7 +61,15 @@ Check `loginctl show-user "$USER" -p Linger`. If lingering is disabled, a system
 
 Enable Actions on the temporary fork. The workflow needs no repository secrets. Cloudflare CLI authentication and runtime credentials stay on the host.
 
-GitHub-hosted runners run the existing tests and build the image. A one-day Actions artifact transfers it to the on-prem runner. The on-prem runner checks that a PR is still open with the same head commit, or that the production SHA is still the main head, before deploying. It loads the image and invokes the installed deployment manager. PR jobs never check out or execute PR host scripts. Only a main deployment updates those scripts. Deploy and cleanup jobs share a per-PR concurrency group and do not cancel running migrations.
+GitHub-hosted runners run the existing tests and build the image. A one-day Actions artifact transfers it to the on-prem runner. The on-prem runner checks that a PR is still open with the same head commit, or that `main` contains the release tag's commit, before deploying. A tag on any other commit fails without touching the host. It loads the image and invokes the installed deployment manager. PR jobs never check out or execute PR host scripts. Only a release updates those scripts. Deploy and cleanup jobs share a per-PR concurrency group and do not cancel running migrations.
+
+To release, tag a `main` commit and push the tag:
+
+```bash
+git switch main && git pull --ff-only
+git tag -a v1.4.0 -m "v1.4.0"
+git push deployment v1.4.0
+```
 
 Same-repository contributors are trusted to run application containers. Fork PRs cannot deploy on this persistent host. Keep write access to the temporary fork limited to trusted maintainers and review workflow changes. Images, containers, and the shared edge host are not a sandbox for hostile code.
 
