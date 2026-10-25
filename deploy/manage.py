@@ -10,7 +10,7 @@ import secrets
 import shutil
 import subprocess
 
-DEFAULT_ROOT = Path.home() / '.local/share/bayne/frontend'
+DEFAULT_ROOT = Path.home() / '.local/share/almis/frontend'
 
 
 def read_env(path):
@@ -43,7 +43,7 @@ def cf(*args):
 def publish_dns(config, hostname, remove=False):
     zone = config['CLOUDFLARE_ZONE']
     target = config['CLOUDFLARE_TUNNEL_ID'] + '.cfargotunnel.com'
-    marker = 'bayne-frontend:' + hostname
+    marker = 'almis-frontend:' + hostname
     records = cf('dns', 'records', 'list', '--zone', zone, '--name', hostname)
     if records:
         if any(r['type'] != 'CNAME' or r['content'] != target or
@@ -174,7 +174,7 @@ def main():
                                TUTORIALS_SIGNING_KEY_FILE=str(tutorial_key))
             compose = ['docker', 'compose', '--project-directory', str(root),
                        '--env-file', str(root / 'deploy.env'), '--env-file', str(env_file),
-                       '-p', f'bayne-fe-pr-{args.pr}', '-f', str(root / 'compose.preview.yml')]
+                       '-p', f'almis-fe-pr-{args.pr}', '-f', str(root / 'compose.preview.yml')]
         environment['APP_IMAGE'] = args.image or 'unused'
         if args.action == 'remove-preview':
             publish_dns(config, hostname, remove=True)

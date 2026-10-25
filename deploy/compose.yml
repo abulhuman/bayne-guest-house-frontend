@@ -1,5 +1,5 @@
 # The backend stack owns Traefik and cloudflared. This stack joins its network.
-name: bayne-frontend
+name: almis-frontend
 services:
   app:
     image: ${APP_IMAGE:?APP_IMAGE is required}
@@ -12,9 +12,9 @@ services:
     labels:
       traefik.enable: "true"
       traefik.docker.network: ${EDGE_NETWORK:-almis-edge}
-      traefik.http.routers.bayne-frontend.rule: Host(`${APP_DOMAIN:?APP_DOMAIN is required}`)
-      traefik.http.routers.bayne-frontend.entrypoints: web
-      traefik.http.services.bayne-frontend.loadbalancer.server.port: "3000"
+      traefik.http.routers.almis-frontend.rule: Host(`${APP_DOMAIN:?APP_DOMAIN is required}`)
+      traefik.http.routers.almis-frontend.entrypoints: web
+      traefik.http.services.almis-frontend.loadbalancer.server.port: "3000"
     networks: [edge]
     healthcheck:
       test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]

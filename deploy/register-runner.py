@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--repo', default='abulhuman/bayne-guest-house-frontend')
     parser.add_argument('--start', action='store_true', help='Install and start a systemd user service')
     args = parser.parse_args()
-    root = Path.home() / '.local/share/bayne/frontend-runner'
+    root = Path.home() / '.local/share/almis/frontend-runner'
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
     if not (root / '.runner').exists():
         # Check permissions before downloading; obtain the short-lived token only
@@ -51,7 +51,7 @@ def main():
         registration = github(f'repos/{args.repo}/actions/runners/registration-token', 'POST')
         environment = {**os.environ, 'ACTIONS_RUNNER_INPUT_TOKEN': registration['token']}
         subprocess.run([str(root / 'config.sh'), '--unattended', '--url', f'https://github.com/{args.repo}',
-                        '--name', 'bayne-frontend-onprem', '--labels', 'bayne-frontend', '--work', '_work'],
+                        '--name', 'almis-frontend-onprem', '--labels', 'almis-frontend', '--work', '_work'],
                        cwd=root, env=environment, check=True)
         archive.unlink()
     else:
@@ -61,9 +61,9 @@ def main():
     if args.start:
         directory = Path.home() / '.local/share/systemd/user'
         directory.mkdir(parents=True, exist_ok=True)
-        unit = directory / 'bayne-frontend-runner.service'
+        unit = directory / 'almis-frontend-runner.service'
         unit.write_text(f'''[Unit]
-Description=Bayne frontend GitHub Actions runner
+Description=Almis frontend GitHub Actions runner
 After=network-online.target
 [Service]
 WorkingDirectory={root}
@@ -78,7 +78,7 @@ WantedBy=default.target
 ''')
         subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
         subprocess.run(['systemctl', '--user', 'enable', '--now', unit.name], check=True)
-        print('Installed and started bayne-frontend-runner.service.')
+        print('Installed and started almis-frontend-runner.service.')
     else:
         print('Registered. Start with ' + str(root / 'run.sh'))
 
