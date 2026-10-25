@@ -79,7 +79,8 @@ def preview_environment(path, hostname):
 def tutorial_paths(pr_number, preview_root):
     root = Path(os.environ.get('ALMIS_TUTORIALS_ROOT', Path.home() / '.local/share/almis/tutorials')).expanduser()
     main = root / 'main'
-    preview = root / f'pr-{pr_number}'
+    # The backend owns tutorials/pr-N on a shared host, so frontend previews use their own names.
+    preview = root / f'frontend-pr-{pr_number}'
     main.mkdir(parents=True, exist_ok=True, mode=0o700)
     # The API signs and checks its own media URLs, so a preview never needs the production key.
     key = preview_root / 'tutorials-signing-key'

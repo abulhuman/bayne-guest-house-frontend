@@ -6,7 +6,7 @@ The temporary deployment repository is https://github.com/abulhuman/bayne-guest-
 
 ## Existing host infrastructure
 
-The backend deployment owns the `almis-main` stack, the `almis-edge` Docker network, Traefik, and the `almis-onprem` Cloudflare Tunnel. This repository joins that network. It does not create another connector or store another tunnel token. Keep the backend stack running.
+The backend deployment owns the `almis-main` stack, the `almis-edge` Docker network, Traefik, and the host's Cloudflare Tunnel. Both stacks run on the backend's deployment host. This repository joins that network. It does not create another connector or store another tunnel token. Keep the backend stack running.
 
 Cloudflare hosts DNS for the Namecheap-registered domain. The existing remotely managed tunnel routes `api.almishotel.com` and `*.almishotel.com` to `http://edge:80`, followed by an HTTP 404 catch-all. The frontend manager creates a proxied CNAME for each published frontend hostname. It refuses to change records without its ownership comment. It does not create a wildcard DNS record or touch the public hotel's root or `www` records.
 
@@ -28,7 +28,7 @@ This installs manifests, the trusted deployment manager, and public configuratio
 - `NEXT_PUBLIC_API_BASE` is `https://api.almishotel.com` for production builds.
 - `PREVIEW_DOMAIN` is `almishotel.com`.
 - `BACKEND_IMAGE` pins the API image used by new frontend preview containers. Build or load that image on this host before deploying previews. Update it deliberately after testing backend changes.
-- `~/.local/share/almis/tutorials/main` is the fallback tutorial store. A matching `pr-N` directory is mounted into the frontend preview API when it exists.
+- `~/.local/share/almis/tutorials/main` is the fallback tutorial store. A matching `frontend-pr-N` directory is mounted into the frontend preview API when it exists. The backend owns `pr-N` in the same directory, because both stacks run on one host.
 - `EDGE_NETWORK`, `CLOUDFLARE_ZONE`, and `CLOUDFLARE_TUNNEL_ID` identify the existing shared infrastructure.
 
 Allow `https://manage.almishotel.com` in the production backend's `ALLOWED_ORIGINS` JSON array, then recreate the API container so it reads the changed environment. Preserve all existing origins and credentials. The frontend manager does not modify the backend's production configuration.
@@ -48,7 +48,7 @@ python3 ~/.local/share/bayne/frontend/manage.py remove-preview --pr 42
 
 The manager waits for healthy containers, runs pending migrations in the preview database, creates the preview admin, then publishes DNS. Re-deploying a PR preserves its database and credentials. Its generated login is stored in `~/.local/share/bayne/frontend/previews/pr-N/admin.env`. Do not post that file in PR comments. Closing a PR removes its DNS record, containers, private network, database volume, and credentials. Image tags remain available for rollback and can be removed separately when no longer needed.
 
-The frontend preview API mounts the tutorial store read-only at `/srv/tutorials`. A preview with no `pr-N` store uses `main`, so it still shows tutorials when the PR re-records nothing. Each preview generates its own HMAC key in `previews/pr-N/tutorials-signing-key` and reads it from `/run/secrets/tutorials-signing-key`. The API signs and checks its own media URLs, so a preview never holds the production key, and closing the PR deletes the key.
+The frontend preview API mounts the tutorial store read-only at `/srv/tutorials`. A preview with no `frontend-pr-N` store uses `main`, so it still shows tutorials when the PR re-records nothing. Each preview generates its own HMAC key in `previews/pr-N/tutorials-signing-key` and reads it from `/run/secrets/tutorials-signing-key`. The API signs and checks its own media URLs, so a preview never holds the production key, and closing the PR deletes the key.
 
 Publish recorded demos into a store with `control.sh publish <dir>`. It checks every video and poster digest before it copies anything, replaces media in the store that fails its digest, and keeps the replaced manifest as `manifest.previous.json`. `control.sh publish-rollback <dir>` swaps the two manifests, so running it again undoes the rollback. Unreferenced media is deleted after 7 days; media in either manifest is kept.
 
@@ -62,7 +62,7 @@ python3 deploy/register-runner.py --repo abulhuman/bayne-guest-house-frontend --
 
 The installer downloads the official Linux x64 runner, verifies the release SHA-256 digest, registers it using a short-lived token passed privately, and starts `bayne-frontend-runner.service` as a systemd user service. Its directory is `~/.local/share/bayne/frontend-runner` and its custom label is `bayne-frontend`.
 
-Check `loginctl show-user "$USER" -p Linger`. If lingering is disabled, a system administrator must enable it with `sudo loginctl enable-linger "$USER"` for the user service to start at boot and survive logout. Container restart policies recover the deployed application whenever Docker starts. The runner is needed for new deployments, not to keep deployed containers serving requests.
+On the current host, `almis` has no sudo and lingering is off, so `bayne-frontend-runner.service` runs as a system unit with `User=almis`, written the same way as the backend's `almis-runner.service`. Check `loginctl show-user "$USER" -p Linger`. If lingering is disabled, a system administrator must enable it with `sudo loginctl enable-linger "$USER"` for the user service to start at boot and survive logout. Container restart policies recover the deployed application whenever Docker starts. The runner is needed for new deployments, not to keep deployed containers serving requests.
 
 Enable Actions on the temporary fork. The workflow needs no repository secrets. Cloudflare CLI authentication and runtime credentials stay on the host.
 
