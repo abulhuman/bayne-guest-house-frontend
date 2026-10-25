@@ -1,6 +1,6 @@
-# Bayne Guest House frontend
+# Almis Guest House frontend
 
-The Next.js frontend for Bayne Guest House calls the hotel API through `NEXT_PUBLIC_API_BASE`.
+The Next.js frontend for Almis Guest House calls the hotel API through `NEXT_PUBLIC_API_BASE`.
 
 ## Local development
 

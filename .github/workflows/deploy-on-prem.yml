@@ -56,14 +56,14 @@ jobs:
   deploy:
     needs: build
     if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/v')
-    runs-on: [self-hosted, linux, x64, bayne-frontend]
+    runs-on: [self-hosted, linux, x64, almis-frontend]
     timeout-minutes: 45
     permissions:
       contents: read
       packages: read
       pull-requests: write
     concurrency:
-      group: bayne-frontend-${{ github.event.pull_request.number || 'production' }}
+      group: almis-frontend-${{ github.event.pull_request.number || 'production' }}
       cancel-in-progress: false
     steps:
       - name: Ignore obsolete deployments
@@ -97,7 +97,7 @@ jobs:
       # 73 MB image artifact within the job limit.
       - name: Build the release image
         if: steps.current.outputs.deploy == 'true' && github.event_name != 'pull_request'
-        run: docker build --build-arg NEXT_PUBLIC_API_BASE=https://api.almishotel.com -t "bayne-frontend:$GITHUB_SHA" .
+        run: docker build --build-arg NEXT_PUBLIC_API_BASE=https://api.almishotel.com -t "almis-frontend:$GITHUB_SHA" .
       - name: Pull the preview image
         if: steps.current.outputs.deploy == 'true' && github.event_name == 'pull_request'
         env:
@@ -111,7 +111,7 @@ jobs:
           trap 'rm -rf "$DOCKER_CONFIG"' EXIT
           echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker pull "$image"
-          docker tag "$image" "bayne-frontend:pr-$PR_NUMBER-$GITHUB_SHA"
+          docker tag "$image" "almis-frontend:pr-$PR_NUMBER-$GITHUB_SHA"
       - name: Deploy image
         if: steps.current.outputs.deploy == 'true'
         env:
@@ -119,16 +119,16 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
         run: |
           if [[ "$EVENT_NAME" == pull_request ]]; then
-            python3 "$HOME/.local/share/bayne/frontend/manage.py" preview --pr "$PR_NUMBER" --image "bayne-frontend:pr-$PR_NUMBER-$GITHUB_SHA"
+            python3 "$HOME/.local/share/almis/frontend/manage.py" preview --pr "$PR_NUMBER" --image "almis-frontend:pr-$PR_NUMBER-$GITHUB_SHA"
           else
-            python3 "$HOME/.local/share/bayne/frontend/manage.py" main --image "bayne-frontend:$GITHUB_SHA"
+            python3 "$HOME/.local/share/almis/frontend/manage.py" main --image "almis-frontend:$GITHUB_SHA"
           fi
       - name: Publish preview URL
         if: steps.current.outputs.deploy == 'true' && github.event_name == 'pull_request'
         uses: actions/github-script@v7
         with:
           script: |
-            const marker = '<!-- bayne-frontend-preview -->';
+            const marker = '<!-- almis-frontend-preview -->';
             const body = `${marker}\nPreview: https://pr-${context.issue.number}.almishotel.com\nUses a separate API and disposable database.`;
             const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number: context.issue.number});
             const existing = comments.find(c => c.user.type === 'Bot' && c.body?.includes(marker));
@@ -142,14 +142,14 @@ jobs:
     if: >-
       github.event_name == 'pull_request' && github.event.action == 'closed' &&
       github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, linux, x64, bayne-frontend]
+    runs-on: [self-hosted, linux, x64, almis-frontend]
     timeout-minutes: 10
     permissions:
       contents: read
       packages: write
       pull-requests: read
     concurrency:
-      group: bayne-frontend-${{ github.event.pull_request.number }}
+      group: almis-frontend-${{ github.event.pull_request.number }}
       cancel-in-progress: false
     steps:
       - name: Check that the PR is still closed
@@ -164,10 +164,10 @@ jobs:
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          python3 "$HOME/.local/share/bayne/frontend/manage.py" remove-preview --pr "$PR_NUMBER"
+          python3 "$HOME/.local/share/almis/frontend/manage.py" remove-preview --pr "$PR_NUMBER"
           # Drop both tags the deploy step created, or the image stays on disk.
           docker image ls --format '{{.Repository}}:{{.Tag}}' |
-            grep -E "^(ghcr.io/$GITHUB_REPOSITORY|bayne-frontend):pr-$PR_NUMBER-" | xargs -r docker image rm
+            grep -E "^(ghcr.io/$GITHUB_REPOSITORY|almis-frontend):pr-$PR_NUMBER-" | xargs -r docker image rm
       - name: Delete closed PRs' images from the registry
         if: steps.current.outputs.closed == 'true'
         env:
