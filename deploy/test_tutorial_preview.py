@@ -33,7 +33,10 @@ class TutorialPreviewTests(unittest.TestCase):
         self.assertEqual(selected, self.root / 'main')
         (self.root / 'pr-42').mkdir()
         selected, _ = deployment.tutorial_paths(42, self.directory / 'previews/pr-42')
-        self.assertEqual(selected, self.root / 'pr-42')
+        self.assertEqual(selected, self.root / 'main', 'pr-42 belongs to backend PR 42')
+        (self.root / 'frontend-pr-42').mkdir()
+        selected, _ = deployment.tutorial_paths(42, self.directory / 'previews/pr-42')
+        self.assertEqual(selected, self.root / 'frontend-pr-42')
 
     def test_each_preview_gets_its_own_private_signing_key(self):
         _, first = deployment.tutorial_paths(1, self.directory / 'previews/pr-1')
