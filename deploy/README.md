@@ -22,13 +22,13 @@ Prerequisites are Docker with Compose supporting `--wait`, Python 3.11 or newer,
 python3 deploy/manage.py prepare
 ```
 
-This installs manifests, the trusted deployment manager, and public configuration into `~/.local/share/almis/frontend`. Existing configuration is preserved. Review `deploy.env` there before the first deployment. Directories are mode `0700` and generated environment files are mode `0600`.
+This installs manifests, the trusted deployment manager, the tutorial publisher `publish.mjs`, and public configuration into `~/.local/share/almis/frontend`. Existing configuration is preserved. Review `deploy.env` there before the first deployment. Directories are mode `0700` and generated environment files are mode `0600`.
 
 - `APP_DOMAIN` is `manage.almishotel.com`.
 - `NEXT_PUBLIC_API_BASE` is `https://api.almishotel.com` for production builds.
 - `PREVIEW_DOMAIN` is `almishotel.com`.
 - `BACKEND_IMAGE` pins the API image used by new frontend preview containers. Build or load that image on this host before deploying previews. Update it deliberately after testing backend changes.
-- `~/.local/share/almis/tutorials/main` is the fallback tutorial store. A matching `frontend-pr-N` directory is mounted into the frontend preview API when it exists. The backend owns `pr-N` in the same directory, because both stacks run on one host.
+- `~/.local/share/almis/tutorials` holds the tutorial stores. Set `ALMIS_TUTORIALS_ROOT` to use another directory. `main` is the production store, and `frontend-pr-N` belongs to frontend PR N. The backend owns `pr-N` in the same directory, because both stacks run on one host.
 - `EDGE_NETWORK`, `CLOUDFLARE_ZONE`, and `CLOUDFLARE_TUNNEL_ID` identify the existing shared infrastructure.
 
 Allow `https://manage.almishotel.com` in the production backend's `ALLOWED_ORIGINS` JSON array, then recreate the API container so it reads the changed environment. Preserve all existing origins and credentials. The frontend manager does not modify the backend's production configuration.
@@ -44,13 +44,16 @@ python3 ~/.local/share/almis/frontend/manage.py main --image almis-frontend:main
 docker build --build-arg NEXT_PUBLIC_API_BASE=/api -t almis-frontend:preview-check .
 python3 ~/.local/share/almis/frontend/manage.py preview --pr 42 --image almis-frontend:preview-check
 python3 ~/.local/share/almis/frontend/manage.py remove-preview --pr 42
+
+python3 ~/.local/share/almis/frontend/manage.py publish-tutorials --source .verify/demos --pr 42
+python3 ~/.local/share/almis/frontend/manage.py publish-tutorials --source .verify/demos --main
 ```
 
-The manager waits for healthy containers, runs pending migrations in the preview database, creates the preview admin, then publishes DNS. Re-deploying a PR preserves its database and credentials. Its generated login is stored in `~/.local/share/almis/frontend/previews/pr-N/admin.env`. Do not post that file in PR comments. Closing a PR removes its DNS record, containers, private network, database volume, and credentials. Image tags remain available for rollback and can be removed separately when no longer needed.
+The manager waits for healthy containers, runs pending migrations in the preview database, creates the preview admin, then publishes DNS. Re-deploying a PR preserves its database and credentials. Its generated login is stored in `~/.local/share/almis/frontend/previews/pr-N/admin.env`. Do not post that file in PR comments. Closing a PR removes its DNS record, containers, private network, database volume, credentials, and tutorial store. Image tags remain available for rollback and can be removed separately when no longer needed.
 
-The frontend preview API mounts the tutorial store read-only at `/srv/tutorials`. A preview with no `frontend-pr-N` store uses `main`, so it still shows tutorials when the PR re-records nothing. Each preview generates its own HMAC key in `previews/pr-N/tutorials-signing-key` and reads it from `/run/secrets/tutorials-signing-key`. The API signs and checks its own media URLs, so a preview never holds the production key, and closing the PR deletes the key.
+The frontend preview API mounts its `frontend-pr-N` store read-only at `/srv/tutorials`. When that store is absent, the manager first seeds it from `main` by hardlinking every regular file there, so a PR that re-records nothing still shows the production tutorials. It skips symlinks and directories, and it refuses a store that is itself a symlink. Seeding writes into a temporary directory and renames it into place, so a run that stops halfway leaves no partial store, and the next run starts over. An existing store is never seeded again. The publisher replaces files by rename and never writes into an existing file, so a PR's publishes never change `main`. Each preview generates its own HMAC key in `previews/pr-N/tutorials-signing-key` and reads it from `/run/secrets/tutorials-signing-key`. The API signs and checks its own media URLs, so a preview never holds the production key, and closing the PR deletes the key.
 
-Publish recorded demos into a store with `control.sh publish <dir>`. It checks every video and poster digest before it copies anything, replaces media in the store that fails its digest, and keeps the replaced manifest as `manifest.previous.json`. `control.sh publish-rollback <dir>` swaps the two manifests, so running it again undoes the rollback. Unreferenced media is deleted after 7 days; media in either manifest is kept.
+Publish recorded demos into a store with `control.sh publish <dir>`. It checks every video and poster digest before it copies anything, replaces media in the store that fails its digest, and keeps the replaced manifest as `manifest.previous.json`. `control.sh publish-rollback <dir>` swaps the two manifests, so running it again undoes the rollback. Unreferenced media is deleted after 7 days; media in either manifest is kept. On the host, `manage.py publish-tutorials --source DIR` runs the same publisher, from the copy installed next to `manage.py`, under the deployment lock. Pass `--pr N` to seed and publish into `frontend-pr-N`, or `--main` to publish into `main`. It accepts exactly one of the two.
 
 A failed deployment can leave containers for inspection and retry. DNS is published only after local health checks pass. The deployment lock serializes host mutations. To roll back production, re-run the workflow on an older tag with `gh workflow run "Deploy on-prem" --ref v1.3.0`, or pass a retained prior frontend image to `manage.py main`; production database migrations are owned by the backend deployment.
 
@@ -77,6 +80,16 @@ git push deployment v1.4.0
 ```
 
 Same-repository contributors are trusted to run application containers. Fork PRs cannot deploy on this persistent host. Keep write access to the temporary fork limited to trusted maintainers and review workflow changes. Images, containers, and the shared edge host are not a sandbox for hostile code.
+
+## Demo recordings
+
+`.github/workflows/demos.yml` re-records the demos a change affects and publishes them. A PR from this repository records the demos that `control.sh affected` finds between the PR's merge base and its head, and publishes them into `frontend-pr-N`. A push to `main` records the pushed range and publishes into `main`. A manual run with `all` records every demo, and without it records the demos the last commit affects. A manual run publishes into `main` only when `main` contains its commit.
+
+Hosted runners record in up to three shards, with no secrets and no host credentials. Each shard checks out the backend fork's `main` next to the frontend, as `control.sh` expects. A demo that fails has no media, so its shard bundle holds only the demos that passed. The `demos` job merges the shard bundles into one, so a single manifest replacement covers the run and `publish-rollback` undoes all of it. The `demos` check fails when any selected demo failed, and the passing demos still publish. A failed demo keeps its previous video.
+
+The on-prem runner then checks that the PR is still open at the same head, or that `main` contains the pushed commit. It downloads the bundle and runs the installed `manage.py publish-tutorials`. It never checks out the repository. Its timeout is two hours, because the host's link once took more than 20 minutes for a 73 MB artifact, and a full run is about 60 MB. A truncated download fails the publisher's digest check and writes nothing. A PR gets one comment, updated on each run, that lists the re-recorded and failed demos and links to `https://pr-N.almishotel.com/help`.
+
+Runs for one PR share a concurrency group, and a newer push cancels the older run, because the newer range covers the older one. PRs never share a group. Pushes to `main` never cancel or replace each other, since each records only its own range, and the deployment lock serializes their publishes. The deploy workflow is separate, so a failing demo never blocks a deploy.
 
 ## Verification
 
