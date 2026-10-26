@@ -201,7 +201,9 @@ jobs:
         if: steps.current.outputs.publish == 'true'
         env:
           TARGET: ${{ steps.current.outputs.target }}
-        run: python3 "$HOME/.local/share/almis/frontend/manage.py" publish-tutorials --source "$RUNNER_TEMP/demos-bundle" "$TARGET"
+          # Runs can finish out of order. The run number orders them, and PR code cannot change it.
+          ORDER: ${{ github.run_number }}
+        run: python3 "$HOME/.local/share/almis/frontend/manage.py" publish-tutorials --source "$RUNNER_TEMP/demos-bundle" "$TARGET" --order "$ORDER"
 
   comment:
     needs: [demos, publish]
@@ -215,7 +217,7 @@ jobs:
         env:
           RECORDED: ${{ needs.demos.outputs.recorded }}
           FAILED: ${{ needs.demos.outputs.failed }}
-          PUBLISHED: ${{ needs.publish.outputs.published }}
+          PUBLISHED: ${{ needs.publish.result == 'success' && needs.publish.outputs.published == 'true' }}
         with:
           script: |
             const recorded = JSON.parse(process.env.RECORDED || '[]');

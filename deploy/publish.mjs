@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-const [mode, sourceArg, targetArg] = process.argv.slice(2);
+const [mode, sourceArg, targetArg, orderArg] = process.argv.slice(2);
 const target = resolve(targetArg);
 const current = join(target, 'manifest.json');
 const previous = join(target, 'manifest.previous.json');
@@ -34,6 +34,14 @@ const incomingText = read(join(source, 'manifest.json'));
 if (!incomingText) throw new Error(`missing manifest: ${join(source, 'manifest.json')}`);
 const incoming = JSON.parse(incomingText);
 if (incoming.version !== 1 || !Array.isArray(incoming.tutorials)) throw new Error('invalid manifest');
+// Runs can finish out of order, so each demo keeps the newest run that published it.
+const orders = join(target, '.publish-order.json');
+const order = orderArg === undefined ? null : Number(orderArg);
+if (order !== null && !Number.isSafeInteger(order)) throw new Error(`invalid order: ${orderArg}`);
+const publishedOrders = order === null ? {} : JSON.parse(read(orders) ?? '{}');
+const stale = incoming.tutorials.filter((tutorial) => (publishedOrders[tutorial.name] ?? -Infinity) > order);
+for (const tutorial of stale) console.log(`STALE ${tutorial.name} run=${order} published=${publishedOrders[tutorial.name]}`);
+incoming.tutorials = incoming.tutorials.filter((tutorial) => !stale.includes(tutorial));
 for (const tutorial of incoming.tutorials) {
   for (const file of [tutorial.video, tutorial.poster]) {
     if (typeof file !== 'string' || !contentName.test(file)) throw new Error(`unsafe media name: ${file}`);
@@ -44,7 +52,7 @@ for (const tutorial of incoming.tutorials) {
 }
 
 mkdirSync(target, { recursive: true, mode: 0o700 });
-for (const file of mediaOf(incomingText)) {
+for (const file of incoming.tutorials.flatMap((tutorial) => [tutorial.video, tutorial.poster])) {
   const to = join(target, file);
   if (intact(to, file)) continue;
   copyFileSync(join(source, file), `${to}.${process.pid}.tmp`);
@@ -57,6 +65,10 @@ const output = JSON.stringify({ version: 1, tutorials: [...merged.values()].sort
 if (output !== published) {
   if (published) replace(previous, published);
   replace(current, output);
+}
+if (order !== null) {
+  for (const tutorial of incoming.tutorials) publishedOrders[tutorial.name] = order;
+  replace(orders, JSON.stringify(publishedOrders, null, 2) + '\n');
 }
 const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
 const referenced = new Set([...mediaOf(output), ...mediaOf(read(previous))]);

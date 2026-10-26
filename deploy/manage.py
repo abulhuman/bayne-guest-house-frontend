@@ -97,7 +97,8 @@ def tutorial_store(pr_number=None):
             shutil.rmtree(seeding)
         seeding.mkdir(mode=0o700)
         for entry in os.scandir(main):
-            if entry.is_file(follow_symlinks=False):
+            # Dotfiles such as .publish-order.json describe main's runs, not this PR's.
+            if entry.is_file(follow_symlinks=False) and not entry.name.startswith('.'):
                 os.link(entry.path, seeding / entry.name, follow_symlinks=False)
         seeding.rename(store)
     return store
@@ -152,12 +153,15 @@ def main():
     parser.add_argument('--pr', type=int)
     parser.add_argument('--source', type=Path, help='demo bundle to publish')
     parser.add_argument('--main', action='store_true', help='publish to the production tutorial store')
+    parser.add_argument('--order', type=int, help='workflow run number; an older run never replaces a newer one')
     args = parser.parse_args()
     publishing = args.action == 'publish-tutorials'
     if publishing != (args.source is not None) or (args.main and not publishing):
         parser.error('--source and --main belong to publish-tutorials only, which needs --source')
     if publishing and args.main == (args.pr is not None):
         parser.error('publish-tutorials needs exactly one of --pr N or --main')
+    if args.order is not None and (not publishing or args.order < 0):
+        parser.error('--order is a non-negative run number for publish-tutorials')
     if publishing and not args.source.is_dir():
         parser.error('--source must be a directory')
     if args.action in ('main', 'preview') and not args.image:
@@ -183,7 +187,7 @@ def main():
         if publishing:
             # The installed publisher, never one from a PR checkout, writes the shared store.
             subprocess.run(['node', str(source / 'publish.mjs'), 'publish', str(args.source.resolve()),
-                            str(tutorial_store(args.pr))], check=True)
+                            str(tutorial_store(args.pr)), *([] if args.order is None else [str(args.order)])], check=True)
             return
         config = read_env(root / 'deploy.env')
         for key in ('APP_DOMAIN', 'PREVIEW_DOMAIN', 'CLOUDFLARE_ZONE', 'CLOUDFLARE_TUNNEL_ID', 'BACKEND_IMAGE'):

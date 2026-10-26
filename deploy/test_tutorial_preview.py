@@ -23,7 +23,8 @@ def load(name, file):
 
 
 deployment = load('deployment', 'manage.py')
-write_source = load('publish_tests', 'test_publish.py').write_source
+publish_tests = load('publish_tests', 'test_publish.py')
+write_source, digest = publish_tests.write_source, publish_tests.digest
 
 
 def files(directory):
@@ -162,6 +163,32 @@ class PublishTutorialsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.names(self.tutorials / 'frontend-pr-7'), ['laundry', 'rooms'])
         self.assertEqual(files(main), before)
+
+    def test_an_older_run_never_replaces_a_demo_a_newer_run_published(self):
+        write_source(self.directory / 'newer', video=b'newer video', name='laundry')
+        self.assertEqual(self.publish('--source', str(self.directory / 'newer'), '--main', '--order', '5').returncode, 0)
+        newer = self.published('laundry')
+        write_source(self.directory / 'older', video=b'older video', name='laundry')
+        result = self.publish('--source', str(self.directory / 'older'), '--main', '--order', '3')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.published('laundry'), newer)
+        write_source(self.directory / 'other', name='rooms')
+        self.assertEqual(self.publish('--source', str(self.directory / 'other'), '--main', '--order', '3').returncode, 0)
+        self.assertEqual(self.names(self.tutorials / 'main'), ['laundry', 'rooms'], 'unrelated demos still publish')
+        self.assertEqual(self.publish('--source', str(self.directory / 'newer'), '--main', '--order', '5').returncode, 0,
+                         'a rerun of the same run publishes again')
+
+    def test_a_pr_store_does_not_inherit_mains_run_order(self):
+        write_source(self.directory / 'main-run', video=b'main video', name='laundry')
+        self.assertEqual(self.publish('--source', str(self.directory / 'main-run'), '--main', '--order', '9').returncode, 0)
+        write_source(self.directory / 'pr-run', video=b'pr video', name='laundry')
+        result = self.publish('--source', str(self.directory / 'pr-run'), '--pr', '7', '--order', '4')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.published('laundry', self.tutorials / 'frontend-pr-7')['sha256'], digest(b'pr video'))
+
+    def published(self, name, store=None):
+        tutorials = json.loads(((store or self.tutorials / 'main') / 'manifest.json').read_text())['tutorials']
+        return next(tutorial for tutorial in tutorials if tutorial['name'] == name)
 
     def test_main_publish_creates_no_pr_store(self):
         write_source(self.directory / 'bundle')
