@@ -574,3 +574,4 @@ export default function InventoryPage() {
     </RequireAuth>
   );
 }
+// FE-4 live check, scratch PR. Do not merge.
