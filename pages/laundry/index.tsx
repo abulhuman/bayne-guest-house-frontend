@@ -517,3 +517,4 @@ export default function LaundryPage() {
     </RequireAuth>
   );
 }
+// FE-4 live check, scratch PR. Do not merge.
