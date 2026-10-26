@@ -61,10 +61,11 @@ jobs:
 
   # Recording runs PR code, so it stays on disposable hosted runners with no secrets.
   record:
+    name: record (shard ${{ matrix.shard }})
     needs: select
     if: needs.select.outputs.shards != '[]'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -89,8 +90,15 @@ jobs:
           cache-dependency-path: |
             bayne-guest-house-frontend/package-lock.json
             bayne-guest-house-backend/package-lock.json
+      # Ubuntu's ffmpeg 6.1 hangs on the renderer's sendcmd-driven crop. Recordings are made
+      # with ffmpeg 9, so the hosted runner uses the same major version.
       - name: Install recording tools
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg fontconfig fonts-dejavu-core
+        run: |
+          set -euo pipefail
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core
+          curl -fsSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n9.0-latest-linux64-gpl-9.0.tar.xz |
+            tar -xJ -C "$RUNNER_TEMP"
+          echo "$(echo "$RUNNER_TEMP"/ffmpeg-n9.0-*/bin)" >> "$GITHUB_PATH"
       - name: Record demos
         working-directory: bayne-guest-house-frontend
         env:
