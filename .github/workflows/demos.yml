@@ -56,12 +56,11 @@ jobs:
           .claude/skills/verify/scripts/control.sh affected "${range[@]}" > "$RUNNER_TEMP/demos"
           demos=$(jq -Rnc '[inputs | select(length > 0)]' "$RUNNER_TEMP/demos")
           echo "demos=$demos" >> "$GITHUB_OUTPUT"
-          echo "shards=$(jq -c '. as $d | [range([length, 3] | min) as $i | {shard: ($i + 1), demos: [$d[range($i; $d | length; 3)]]}]' <<<"$demos")" >> "$GITHUB_OUTPUT"
+          echo "shards=$(jq -c '[range(1; ([length, 3] | min) + 1)]' <<<"$demos")" >> "$GITHUB_OUTPUT"
           echo "Selected $(jq length <<<"$demos") demos: $(jq -r 'join(" ")' <<<"$demos")"
 
   # Recording runs PR code, so it stays on disposable hosted runners with no secrets.
   record:
-    name: record (shard ${{ matrix.shard }})
     needs: select
     if: needs.select.outputs.shards != '[]'
     runs-on: ubuntu-latest
@@ -72,7 +71,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.select.outputs.shards) }}
+        shard: ${{ fromJSON(needs.select.outputs.shards) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -105,8 +104,9 @@ jobs:
       - name: Record demos
         working-directory: bayne-guest-house-frontend
         env:
-          DEMOS: ${{ toJSON(matrix.demos) }}
-        run: .claude/skills/verify/scripts/control.sh demo "@($(jq -r 'join("|")' <<<"$DEMOS"))"
+          DEMOS: ${{ needs.select.outputs.demos }}
+          SHARD: ${{ matrix.shard }}
+        run: .claude/skills/verify/scripts/control.sh demo "@($(jq -r --argjson n "$SHARD" '[.[range($n - 1; length; 3)]] | join("|")' <<<"$DEMOS"))"
       # A failed demo has no media, so the manifest names only the demos that passed.
       - name: Bundle passing demos
         if: always()
