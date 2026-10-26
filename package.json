@@ -1,5 +1,5 @@
 {
-  "name": "guest-house-frontend",
+  "name": "@almis/frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {

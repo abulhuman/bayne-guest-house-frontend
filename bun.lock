@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "guest-house-frontend",
+      "name": "@almis/frontend",
       "dependencies": {
         "@phosphor-icons/react": "^2.1.10",
         "@videojs/react": "10.1.0",
