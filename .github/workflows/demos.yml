@@ -1,0 +1,242 @@
+name: Demos
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      all:
+        description: Re-record every demo
+        type: boolean
+        default: false
+permissions:
+  contents: read
+# A PR run records base...head, so a newer push covers everything an older run would.
+# Other runs record only their own range, so none may replace a queued one.
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('demos-pr-{0}', github.event.pull_request.number) || format('demos-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  select:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      demos: ${{ steps.select.outputs.demos }}
+      shards: ${{ steps.select.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Select affected demos
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}:${{ inputs.all || false }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.event.after }}
+        run: |
+          set -euo pipefail
+          empty_tree=$(git hash-object -t tree /dev/null)
+          # Every demo spec is new against the empty tree, so that range selects all demos.
+          case "$EVENT" in
+            pull_request:*) range=("$(git merge-base "$PR_BASE" "$PR_HEAD")" "$PR_HEAD") ;;
+            push:*) range=("$BEFORE" "$AFTER") ;;
+            workflow_dispatch:true) range=("$empty_tree" "$GITHUB_SHA") ;;
+            workflow_dispatch:*) range=("$GITHUB_SHA^" "$GITHUB_SHA") ;;
+          esac
+          .claude/skills/verify/scripts/control.sh affected "${range[@]}" > "$RUNNER_TEMP/demos"
+          demos=$(jq -Rnc '[inputs | select(length > 0)]' "$RUNNER_TEMP/demos")
+          echo "demos=$demos" >> "$GITHUB_OUTPUT"
+          echo "shards=$(jq -c '. as $d | [range([length, 3] | min) as $i | {shard: ($i + 1), demos: [$d[range($i; $d | length; 3)]]}]' <<<"$demos")" >> "$GITHUB_OUTPUT"
+          echo "Selected $(jq length <<<"$demos") demos: $(jq -r 'join(" ")' <<<"$demos")"
+
+  # Recording runs PR code, so it stays on disposable hosted runners with no secrets.
+  record:
+    needs: select
+    if: needs.select.outputs.shards != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.select.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          path: bayne-guest-house-frontend
+          persist-credentials: false
+      # control.sh finds the backend at this sibling path.
+      - uses: actions/checkout@v4
+        with:
+          repository: abulhuman/bayne-guest-house-backend
+          ref: main
+          path: bayne-guest-house-backend
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            bayne-guest-house-frontend/package-lock.json
+            bayne-guest-house-backend/package-lock.json
+      - name: Install recording tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg fontconfig fonts-dejavu-core
+      - name: Record demos
+        working-directory: bayne-guest-house-frontend
+        env:
+          DEMOS: ${{ toJSON(matrix.demos) }}
+        run: .claude/skills/verify/scripts/control.sh demo "@($(jq -r 'join("|")' <<<"$DEMOS"))"
+      # A failed demo has no media, so the manifest names only the demos that passed.
+      - name: Bundle passing demos
+        if: always()
+        working-directory: bayne-guest-house-frontend/.verify/demos
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bundle"
+          [[ -f manifest.json ]] || exit 0
+          jq -r '"manifest.json", (.tutorials[] | .video, .poster)' manifest.json | xargs cp -t "$RUNNER_TEMP/bundle"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: demos-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/bundle
+          if-no-files-found: ignore
+          retention-days: 1
+
+  demos:
+    needs: [select, record]
+    if: ${{ !cancelled() && needs.select.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      recorded: ${{ steps.merge.outputs.recorded }}
+      failed: ${{ steps.merge.outputs.failed }}
+    steps:
+      - uses: actions/download-artifact@v4
+        if: needs.select.outputs.shards != '[]'
+        with:
+          pattern: demos-shard-*
+          path: shards
+      # One bundle means one manifest replacement, so publish-rollback undoes the whole run.
+      - name: Merge shard bundles
+        id: merge
+        env:
+          SELECTED: ${{ needs.select.outputs.demos }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          mkdir -p bundle
+          manifests=(shards/*/manifest.json)
+          recorded='[]'
+          if (( ${#manifests[@]} )); then
+            find shards -type f ! -name manifest.json -exec cp -t bundle {} +
+            jq -s '{version: 1, tutorials: (map(.tutorials) | add | sort_by(.name))}' "${manifests[@]}" > bundle/manifest.json
+            recorded=$(jq -c '[.tutorials[].name]' bundle/manifest.json)
+          fi
+          echo "recorded=$recorded" >> "$GITHUB_OUTPUT"
+          echo "failed=$(jq -cn --argjson selected "$SELECTED" --argjson recorded "$recorded" '$selected - $recorded')" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: steps.merge.outputs.recorded != '[]'
+        with:
+          name: demos-bundle
+          path: bundle
+          retention-days: 7
+      - name: Fail when a demo failed
+        if: steps.merge.outputs.failed != '[]'
+        env:
+          FAILED: ${{ steps.merge.outputs.failed }}
+        run: |
+          echo "::error::Demos failed: $(jq -r 'join(", ")' <<<"$FAILED")"
+          exit 1
+
+  publish:
+    needs: demos
+    if: ${{ !cancelled() && needs.demos.outputs.recorded != '' && needs.demos.outputs.recorded != '[]' }}
+    runs-on: [self-hosted, linux, x64, almis-frontend]
+    # The host's link once failed to download a 73 MB artifact in 20 minutes.
+    timeout-minutes: 120
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    outputs:
+      published: ${{ steps.current.outputs.publish }}
+    steps:
+      - name: Ignore obsolete recordings
+        id: current
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'pull_request') {
+              const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: context.issue.number});
+              core.setOutput('publish', pr.state === 'open' && pr.head.sha === context.payload.pull_request.head.sha);
+              core.setOutput('target', `--pr=${context.issue.number}`);
+            } else {
+              const {data: diff} = await github.rest.repos.compareCommits({...context.repo, base: 'main', head: context.sha});
+              if (!['identical', 'behind'].includes(diff.status)) {
+                core.setFailed(`${context.sha} is not on main, so its demos stay unpublished.`);
+                return;
+              }
+              core.setOutput('publish', true);
+              core.setOutput('target', '--main');
+            }
+      # The host never checks out or runs PR code. It runs only the release-installed manager,
+      # and the publisher checks every name and digest in the bundle before writing.
+      - uses: actions/download-artifact@v4
+        if: steps.current.outputs.publish == 'true'
+        with:
+          name: demos-bundle
+          path: ${{ runner.temp }}/demos-bundle
+      - name: Publish tutorials
+        if: steps.current.outputs.publish == 'true'
+        env:
+          TARGET: ${{ steps.current.outputs.target }}
+        run: python3 "$HOME/.local/share/almis/frontend/manage.py" publish-tutorials --source "$RUNNER_TEMP/demos-bundle" "$TARGET"
+
+  comment:
+    needs: [demos, publish]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.demos.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          RECORDED: ${{ needs.demos.outputs.recorded }}
+          FAILED: ${{ needs.demos.outputs.failed }}
+          PUBLISHED: ${{ needs.publish.outputs.published }}
+        with:
+          script: |
+            const recorded = JSON.parse(process.env.RECORDED || '[]');
+            const failed = JSON.parse(process.env.FAILED || '[]');
+            const marker = '<!-- almis-frontend-demos -->';
+            const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number: context.issue.number});
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body?.includes(marker));
+            if (!existing && !recorded.length && !failed.length) return;
+            const list = names => names.map(name => `- \`${name}\``).join('\n');
+            const help = `https://pr-${context.issue.number}.almishotel.com/help`;
+            const sections = [marker];
+            if (recorded.length) {
+              sections.push(process.env.PUBLISHED === 'true'
+                ? `Re-recorded and published to ${help}:\n${list(recorded)}`
+                : `Re-recorded but not published, so ${help} still shows the previous videos:\n${list(recorded)}`);
+            }
+            if (failed.length) sections.push(`Failed, so ${help} keeps the previous video:\n${list(failed)}`);
+            if (!recorded.length && !failed.length) sections.push('No demos are affected by this PR.');
+            const body = sections.join('\n\n');
+            if (existing) {
+              await github.rest.issues.updateComment({...context.repo, comment_id: existing.id, body});
+            } else {
+              await github.rest.issues.createComment({...context.repo, issue_number: context.issue.number, body});
+            }
