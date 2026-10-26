@@ -107,12 +107,22 @@ jobs:
       # A failed demo has no media, so the manifest names only the demos that passed.
       - name: Bundle passing demos
         if: always()
-        working-directory: bayne-guest-house-frontend/.verify/demos
+        working-directory: bayne-guest-house-frontend
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/bundle"
-          [[ -f manifest.json ]] || exit 0
+          [[ -f .verify/demos/manifest.json ]] || exit 0
+          cd .verify/demos
           jq -r '"manifest.json", (.tutorials[] | .video, .poster)' manifest.json | xargs cp -t "$RUNNER_TEMP/bundle"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: demos-logs-shard-${{ matrix.shard }}
+          path: |
+            bayne-guest-house-frontend/.verify/run*/*.log
+            bayne-guest-house-frontend/.verify/evidence
+          if-no-files-found: ignore
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -114,7 +114,8 @@ STATE_EOF
   local i
   for i in $(seq 120); do
     [[ "$(curl -s -o /dev/null -w '%{http_code}' -m 60 "$WEB_URL/login")" == 200 ]] && break
-    web_alive || die "web-exited log=$RUN_DIR/web.log"
+    # Until the subshell execs next, its cmdline is still this script's, so web_alive would misfire.
+    kill -0 "$pid" 2>/dev/null || die "web-exited log=$RUN_DIR/web.log"
     sleep 1
   done
   [[ "$(curl -s -o /dev/null -w '%{http_code}' -m 60 "$WEB_URL/login")" == 200 ]] || die "web-timeout log=$RUN_DIR/web.log"
