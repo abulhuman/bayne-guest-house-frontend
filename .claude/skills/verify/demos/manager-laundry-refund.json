@@ -25,7 +25,7 @@
     { "caption": "Check the amount, then confirm." },
     { "click": { "role": "button", "name": "Refund" } },
     { "expectApi": "PATCH /payments/${PAY} 200" },
-    { "expectText": "Payment refunded" },
+    { "expectText": "Payment refunded, FE-4 lane 7 deliberate failure" },
     { "expectHidden": "tr:has-text('1 Silk scarf, 1 Blouse') >> nth=0 >> role=button[name='Refund']" },
     { "fill": { "placeholder": "Search by guest, items, status…" }, "value": "" },
     { "expectVisible": "tr:has-text('2 Shirts')" },
