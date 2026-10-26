@@ -1,5 +1,7 @@
 # Almis Guest House frontend
 
+> **Moved.** This app now lives at [`apps/frontend`](https://github.com/abulhuman/almis-hotel-portal/tree/main/apps/frontend) in [almis-hotel-portal](https://github.com/abulhuman/almis-hotel-portal), which also deploys it. This repository is archived.
+
 The Next.js frontend for Almis Guest House calls the hotel API through `NEXT_PUBLIC_API_BASE`.
 
 ## Local development
