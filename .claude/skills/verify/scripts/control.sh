@@ -79,7 +79,7 @@ cmd_up() {
   mkdir -p "$RUN_DIR" "$evidence" "$TOOLS"
   local log="$RUN_DIR/up.log"; : >"$log"
 
-  [[ -d "$ROOT/node_modules/next" ]] || (cd "$ROOT" && npm ci --no-audit --no-fund >>"$log" 2>&1) || die "npm-ci log=$log"
+  [[ -d "$ROOT/node_modules/next" ]] || (cd "$ROOT" && bun install --frozen-lockfile >>"$log" 2>&1) || die "install log=$log"
   [[ -d "$TOOLS/node_modules/playwright-core" ]] ||
     npm install --prefix "$TOOLS" --no-audit --no-fund playwright-core@1.58 >>"$log" 2>&1 || die "install-playwright log=$log"
   local chrome; chrome="$(chromium_path)" || die "no-chromium set CHROMIUM=<path to chrome binary>"

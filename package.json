@@ -1,12 +1,13 @@
 {
-  "name": "guest-house-frontend",
+  "name": "@almis/frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "node --test lib/*.test.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
