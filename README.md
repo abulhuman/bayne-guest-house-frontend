@@ -4,7 +4,7 @@ The Next.js frontend for Almis Guest House calls the hotel API through `NEXT_PUB
 
 ## Local development
 
-Set `NEXT_PUBLIC_API_BASE=http://localhost:3001` in `.env.local`, install dependencies with `npm ci`, then run `npm run dev`. Open http://localhost:3000.
+Set `NEXT_PUBLIC_API_BASE=http://localhost:3001` in `.env.local`, install dependencies with `bun install`, then run `bun run dev`. Open http://localhost:3000.
 
 ## On-prem deployment
 

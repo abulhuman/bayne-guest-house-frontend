@@ -85,13 +85,9 @@ jobs:
           ref: main
           path: bayne-guest-house-backend
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: jdx/mise-action@v4
         with:
-          node-version: '24'
-          cache: npm
-          cache-dependency-path: |
-            bayne-guest-house-frontend/package-lock.json
-            bayne-guest-house-backend/package-lock.json
+          working_directory: bayne-guest-house-frontend
       # Ubuntu's ffmpeg 6.1 hangs on the renderer's sendcmd-driven crop. Recordings are made
       # with ffmpeg 9, so the hosted runner uses the same major version.
       - name: Install recording tools

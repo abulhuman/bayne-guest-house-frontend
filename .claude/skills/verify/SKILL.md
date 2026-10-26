@@ -28,7 +28,7 @@ $S up
 | `FAIL backend-up <line>` | The backend skill failed. | Read the step and log named in `<line>`. |
 | `FAIL bad-verify-id …` | `VERIFY_ID` has a character outside `A-Za-z0-9_-`. | Pick an id such as `owner-ux-1`. |
 | `FAIL cors …` | The reused backend allows a different origin. | `$S down && $S up` |
-| `FAIL npm-ci`, `install-playwright`, `web-exited`, `web-timeout`, `no-chromium` | A local setup step failed. | Read the `log=` file it names, or set `CHROMIUM=<binary>`. |
+| `FAIL install`, `install-playwright`, `web-exited`, `web-timeout`, `no-chromium` | A local setup step failed. | Read the `log=` file it names, or set `CHROMIUM=<binary>`. |
 
 `up` is idempotent. A healthy instance prints `READY` again. The web port is kept in `.verify/web-port` so the backend's CORS origin stays valid across restarts. Give each worktree its own `VERIFY_ID`, such as `VERIFY_ID=owner-ux-1`, so instances in separate worktrees get separate backends, databases and ports. Every subcommand reads it, so export it once per shell. A set id keys the state as `.verify/run-$VERIFY_ID/` and `.verify/web-port-$VERIFY_ID`. Unset, the paths stay `.verify/run/` and `.verify/web-port`. `next dev` hot-reloads, so code edits need no restart. Only one web instance can run per checkout, because `.next` can't be shared.
 
@@ -152,6 +152,6 @@ It kills only the process group recorded at `up`, after checking that its cwd is
 
 ## Helpers
 
-- `scripts/control.sh` is the entry point. It needs `node`, `npm`, `curl`, `ss`, `pgrep`, a Chromium binary and the backend repo.
+- `scripts/control.sh` is the entry point. It needs `bun`, `node`, `npm`, `curl`, `ss`, `pgrep`, a Chromium binary and the backend repo.
 - `scripts/drive.mjs` runs one spec. `control.sh drive`, `suite` and `demo` call it with the instance's environment. Don't call it directly.
 - `scripts/demo-index.mjs` writes the demo gallery. `control.sh demo` calls it.
