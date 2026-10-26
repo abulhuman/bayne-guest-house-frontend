@@ -76,12 +76,34 @@ def preview_environment(path, hostname):
     return values
 
 
-def tutorial_paths(pr_number, preview_root):
+def tutorial_stores(pr_number):
     root = Path(os.environ.get('ALMIS_TUTORIALS_ROOT', Path.home() / '.local/share/almis/tutorials')).expanduser()
-    main = root / 'main'
     # The backend owns tutorials/pr-N on a shared host, so frontend previews use their own names.
-    preview = root / f'frontend-pr-{pr_number}'
+    return root / 'main', root / f'frontend-pr-{pr_number}'
+
+
+def tutorial_store(pr_number=None):
+    """Return main's store, or a frontend PR's store seeded from main when absent."""
+    main, store = tutorial_stores(pr_number)
     main.mkdir(parents=True, exist_ok=True, mode=0o700)
+    if pr_number is None:
+        return main
+    if store.is_symlink():
+        raise RuntimeError(f'Refusing a symlinked tutorial store: {store}')
+    if not store.is_dir():
+        # Publishing replaces files by rename, so hardlinks never write through to main.
+        seeding = store.with_name(f'.{store.name}.seeding')
+        if seeding.exists():
+            shutil.rmtree(seeding)
+        seeding.mkdir(mode=0o700)
+        for entry in os.scandir(main):
+            if entry.is_file(follow_symlinks=False):
+                os.link(entry.path, seeding / entry.name, follow_symlinks=False)
+        seeding.rename(store)
+    return store
+
+
+def signing_key(preview_root):
     # The API signs and checks its own media URLs, so a preview never needs the production key.
     key = preview_root / 'tutorials-signing-key'
     preview_root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -90,7 +112,13 @@ def tutorial_paths(pr_number, preview_root):
         temporary.write_text(secrets.token_urlsafe(48) + '\n')
         os.chmod(temporary, 0o600)
         temporary.replace(key)
-    return (preview if preview.is_dir() else main), key
+    return key
+
+
+def remove_tutorial_store(pr_number):
+    _, store = tutorial_stores(pr_number)
+    if os.path.lexists(store):
+        shutil.rmtree(store)
 
 
 def bootstrap_preview_admin(compose, environment, path):
@@ -118,14 +146,23 @@ const prisma = new PrismaClient();
 def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['prepare', 'main', 'preview', 'remove-preview'])
+    parser.add_argument('action', choices=['prepare', 'main', 'preview', 'remove-preview', 'publish-tutorials'])
     parser.add_argument('--root', type=Path, default=DEFAULT_ROOT)
     parser.add_argument('--image')
     parser.add_argument('--pr', type=int)
+    parser.add_argument('--source', type=Path, help='demo bundle to publish')
+    parser.add_argument('--main', action='store_true', help='publish to the production tutorial store')
     args = parser.parse_args()
+    publishing = args.action == 'publish-tutorials'
+    if publishing != (args.source is not None) or (args.main and not publishing):
+        parser.error('--source and --main belong to publish-tutorials only, which needs --source')
+    if publishing and args.main == (args.pr is not None):
+        parser.error('publish-tutorials needs exactly one of --pr N or --main')
+    if publishing and not args.source.is_dir():
+        parser.error('--source must be a directory')
     if args.action in ('main', 'preview') and not args.image:
         parser.error('--image is required')
-    if args.action in ('preview', 'remove-preview') and (args.pr is None or args.pr < 1):
+    if (args.action in ('preview', 'remove-preview') and args.pr is None) or (args.pr is not None and args.pr < 1):
         parser.error('--pr must be positive')
     if args.image and not re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9._/:@-]*', args.image):
         parser.error('Invalid image reference')
@@ -135,13 +172,18 @@ def main():
         fcntl.flock(lock, fcntl.LOCK_EX)
         source = Path(__file__).resolve().parent
         if args.action == 'prepare':
-            for name in ('compose.yml', 'compose.preview.yml', 'manage.py'):
+            for name in ('compose.yml', 'compose.preview.yml', 'manage.py', 'publish.mjs'):
                 if source / name != root / name:
                     shutil.copyfile(source / name, root / name)
             config_file = root / 'deploy.env'
             if not config_file.exists():
                 write_env(config_file, read_env(source / 'deploy.env.example'))
             print(f'Prepared {root}; existing configuration preserved.')
+            return
+        if publishing:
+            # The installed publisher, never one from a PR checkout, writes the shared store.
+            subprocess.run(['node', str(source / 'publish.mjs'), 'publish', str(args.source.resolve()),
+                            str(tutorial_store(args.pr))], check=True)
             return
         config = read_env(root / 'deploy.env')
         for key in ('APP_DOMAIN', 'PREVIEW_DOMAIN', 'CLOUDFLARE_ZONE', 'CLOUDFLARE_TUNNEL_ID', 'BACKEND_IMAGE'):
@@ -165,13 +207,13 @@ def main():
             env_file = preview_root / '.env'
             if args.action == 'remove-preview' and not env_file.exists():
                 publish_dns(config, hostname, remove=True)
+                remove_tutorial_store(args.pr)
                 print(f'Preview {args.pr} already absent.')
                 return
             preview_environment(env_file, hostname)
-            tutorial_dir, tutorial_key = tutorial_paths(args.pr, preview_root)
             environment.update(PR_NUMBER=str(args.pr), PREVIEW_HOST=hostname,
-                               PREVIEW_ENV_FILE=str(env_file), TUTORIALS_HOST_DIR=str(tutorial_dir),
-                               TUTORIALS_SIGNING_KEY_FILE=str(tutorial_key))
+                               PREVIEW_ENV_FILE=str(env_file), TUTORIALS_HOST_DIR=str(tutorial_store(args.pr)),
+                               TUTORIALS_SIGNING_KEY_FILE=str(signing_key(preview_root)))
             compose = ['docker', 'compose', '--project-directory', str(root),
                        '--env-file', str(root / 'deploy.env'), '--env-file', str(env_file),
                        '-p', f'almis-fe-pr-{args.pr}', '-f', str(root / 'compose.preview.yml')]
@@ -181,7 +223,8 @@ def main():
             subprocess.run(compose + ['down', '--volumes', '--remove-orphans'],
                            env=environment, check=True)
             shutil.rmtree(preview_root)
-            print(f'Removed preview {args.pr} and its disposable database.')
+            remove_tutorial_store(args.pr)
+            print(f'Removed preview {args.pr}, its disposable database, and its tutorials.')
             return
         subprocess.run(['docker', 'network', 'inspect', config.get('EDGE_NETWORK', 'almis-edge')],
                        stdout=subprocess.DEVNULL, env=environment, check=True)
